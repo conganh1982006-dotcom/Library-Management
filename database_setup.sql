@@ -47,13 +47,13 @@ DROP TABLE IF EXISTS `books`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `books` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
+  `book_id` bigint NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `author_id` bigint DEFAULT NULL,
   `category_id` bigint DEFAULT NULL,
   `total_quantity` int DEFAULT '0',
   `available_quantity` int DEFAULT '0',
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`book_id`),
   KEY `author_id` (`author_id`),
   KEY `category_id` (`category_id`),
   CONSTRAINT `books_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `authors` (`author_id`) ON DELETE SET NULL ON UPDATE CASCADE,

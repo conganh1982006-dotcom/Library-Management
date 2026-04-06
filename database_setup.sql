@@ -67,8 +67,9 @@ CREATE TABLE `books` (
 
 LOCK TABLES `books` WRITE;
 /*!40000 ALTER TABLE `books` DISABLE KEYS */;
-INSERT INTO `books` VALUES (1,'Harry Potter and the Sorcerer\'s Stone',1,1,11,10),(2,'How to Win Friends and Influence People',2,2,5,5),(5,'Super coder vip pro vn',1,1,21,20),(6,'hello world',1,1,10,10);
+INSERT INTO `books` VALUES (1,'Harry Potter and the Sorcerer''s Stone',1,1,11,10),(2,'How to Win Friends and Influence People',2,2,5,5),(5,'Super coder vip pro vn',1,1,21,20),(6,'hello world',1,1,10,10);
 /*!40000 ALTER TABLE `books` ENABLE KEYS */;
+
 UNLOCK TABLES;
 
 --

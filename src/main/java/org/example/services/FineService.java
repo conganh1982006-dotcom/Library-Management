@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit;
 
 public class FineService {
 
-    // 1. "Bộ vi xử lý" cốt lõi: Thuật toán tính tiền phạt
+    //"Bộ vi xử lý" cốt lõi: Thuật toán tính tiền phạt
     public long calculateFine(long daysLate) {
         if (daysLate <= 0) {
             return 0; // Trả đúng hạn hoặc sớm hơn, không phạt
@@ -20,14 +20,14 @@ public class FineService {
         }
     }
 
-    // 2. Chức năng dành cho Admin: Tính toán và hiển thị hóa đơn phạt
+    // Chức năng dành cho Admin: Tính toán và hiển thị hóa đơn phạt
     // (Sử dụng LocalDate để giả lập ngày hẹn trả và ngày trả thực tế)
     public void adminViewFineReport(LocalDate dueDate, LocalDate returnDate) {
         System.out.println("\n=======================================");
         System.out.println("         BOOK RETURN REPORT     ");
         System.out.println("=======================================");
-        System.out.println("📅 Payment appointment date: " + dueDate);
-        System.out.println("📅 Actual payment date: " + returnDate);
+        System.out.println("Payment appointment date: " + dueDate);
+        System.out.println("Actual payment date: " + returnDate);
 
         // Tính toán khoảng cách giữa 2 ngày
         long daysLate = ChronoUnit.DAYS.between(dueDate, returnDate);
@@ -37,12 +37,12 @@ public class FineService {
             System.out.println(" Fine amount: 0 VND");
         } else {
             long fineAmount = calculateFine(daysLate);
-            System.out.println("⚠️ Status: VIOLATION (Late " + daysLate + " day)");
-            System.out.println("💸 TOTAL FINES " + fineAmount + " VNĐ");
+            System.out.println("Status: VIOLATION (Late " + daysLate + " day)");
+            System.out.println("TOTAL FINES " + fineAmount + " VNĐ");
 
-            // Gợi ý nhỏ cho Admin
+            // Gợi ý
             if (daysLate > 10) {
-                System.out.println("📌 Note: An increased penalty (2000 VND/day) has been applied. " + (daysLate - 10) + " day beyond frame.");
+                System.out.println("Note: An increased penalty (2000 VND/day) has been applied. " + (daysLate - 10) + " day beyond frame.");
             }
         }
         System.out.println("=======================================\n");

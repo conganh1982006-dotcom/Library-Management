@@ -1,197 +1,271 @@
-
 package org.example.Data_access_object;
 
+import org.example.DatabaseConnection;
+import org.example.models.Book;
+import org.example.models.Category;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import org.example.models.Book;
 
 public class BookDAO {
-    private final String url = "jdbc:mysql://localhost:3306/library_management";
-    private final String user = "root";
-    private final String password = "123456";
 
-    // =========================================================================
-    // 1. DÀNH CHO MAIN DASHBOARD (Có lọc Thể loại bằng JOIN)
-    // =========================================================================
-    public List<Book> getBooks(String categoryFilter) {
-        List<Book> books = new ArrayList<>();
+    public List<Category> getAllCategories() {
+        List<Category> list = new ArrayList<>();
+        String sql = "SELECT * FROM categories";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(new Category(rs.getLong("category_id"), rs.getString("name")));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 
-        // Dùng LEFT JOIN để móc tên Tác giả và Thể loại từ 2 bảng khác lên
-        String sql = "SELECT b.id, b.title, a.name AS author_name, c.name AS category_name, b.total_quantity, b.available_quantity " +
+    public List<Book> getAllBooks() {
+        List<Book> list = new ArrayList<>();
+        String sql = "SELECT b.*, a.name AS author_name, c.name AS category_name " +
                 "FROM books b " +
-                "LEFT JOIN authors a ON b.author_id = a.id " +
-                "LEFT JOIN categories c ON b.category_id = c.id ";
+                "LEFT JOIN authors a ON b.author_id = a.author_id " +
+                "LEFT JOIN categories c ON b.category_id = c.category_id";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Book b = new Book(
+                        rs.getLong("book_id"),
+                        rs.getString("book_code"),
+                        rs.getString("title"),
+                        rs.getLong("author_id"),
+                        rs.getLong("category_id"),
+                        rs.getInt("total_quantity"),
+                        rs.getInt("available_quantity")
+                );
+                b.setAuthorName(rs.getString("author_name"));
+                b.setCategoryName(rs.getString("category_name"));
+                list.add(b);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 
-        // Nếu người dùng chọn lọc một thể loại cụ thể (không phải "All")
-        if (!categoryFilter.equals("All")) {
-            sql += "WHERE c.name = ? ";
+    // 2. OMNI-SEARCH CƠ BẢN (Dành cho BorrowPopup dùng lại)
+    public List<Book> searchOmni(String keyword) {
+        // Tái sử dụng hàm bên dưới với categoryId = 0 (Không lọc thể loại)
+        return searchOmni(keyword, 0);
+    }
+
+    //OMNI-SEARCH + FILTER (Kết hợp Tìm kiếm & Lọc thể loại)
+    public List<Book> searchOmni(String keyword, long categoryId) {
+        List<Book> list = new ArrayList<>();
+        // Câu lệnh SQL linh hoạt, có điều kiện lọc thể loại
+        String sql = "SELECT b.*, a.name AS author_name, c.name AS category_name " +
+                "FROM books b " +
+                "LEFT JOIN authors a ON b.author_id = a.author_id " +
+                "LEFT JOIN categories c ON b.category_id = c.category_id " +
+                "WHERE (b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?) ";
+
+        // Nếu categoryId > 0 tức là người dùng có chọn Thể loại để lọc
+        if (categoryId > 0) {
+            sql += " AND b.category_id = ?";
         }
 
-        try (Connection conn = DriverManager.getConnection(url, user, password);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            if (!categoryFilter.equals("All")) {
-                pstmt.setString(1, categoryFilter);
+            String searchPattern = "%" + keyword + "%";
+            ps.setString(1, searchPattern);
+            ps.setString(2, searchPattern);
+            ps.setString(3, searchPattern);
+            ps.setString(4, searchPattern);
+
+            // Truyền thêm id thể loại vào câu truy vấn nếu có
+            if (categoryId > 0) {
+                ps.setLong(5, categoryId);
             }
 
-            try (ResultSet rs = pstmt.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String author = rs.getString("author_name") != null ? rs.getString("author_name") : "N/A";
-                    String category = rs.getString("category_name") != null ? rs.getString("category_name") : "N/A";
-
-                    // Đã truyền đủ 6 thông số cho Khuôn Book mới!
-                    books.add(new Book(
-                            rs.getInt("id"),
+                    Book b = new Book(
+                            rs.getLong("book_id"),
+                            rs.getString("book_code"),
                             rs.getString("title"),
-                            author,
-                            category,
+                            rs.getLong("author_id"),
+                            rs.getLong("category_id"),
                             rs.getInt("total_quantity"),
                             rs.getInt("available_quantity")
-                    ));
+                    );
+                    b.setAuthorName(rs.getString("author_name"));
+                    b.setCategoryName(rs.getString("category_name"));
+                    list.add(b);
                 }
             }
-        } catch (Exception e) {
-            System.out.println("❌ Error retrieving the list: " + e.getMessage());
-        }
-        return books;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
     }
 
-    // =========================================================================
-    // 2. DÀNH CHO BORROW POPUP (Cần lấy tất cả sách)
-    // =========================================================================
-    public List<Book> getAllBooks() {
-        // Tận dụng lại hàm getBooks ở trên cho code gọn gàng!
-        return getBooks("All");
-    }
-
-    // =========================================================================
-    // 3. TÌM SÁCH THEO TÊN (Dùng cho cả Dashboard và Popup)
-    // =========================================================================
-    public List<Book> searchBooksForUI(String keyword) {
-        List<Book> books = new ArrayList<>();
-        String sql = "SELECT b.id, b.title, a.name AS author_name, c.name AS category_name, b.total_quantity, b.available_quantity " +
-                "FROM books b " +
-                "LEFT JOIN authors a ON b.author_id = a.id " +
-                "LEFT JOIN categories c ON b.category_id = c.id " +
-                "WHERE b.title LIKE ?";
-
-        try (Connection conn = DriverManager.getConnection(url, user, password);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, "%" + keyword + "%");
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                String author = rs.getString("author_name") != null ? rs.getString("author_name") : "N/A";
-                String category = rs.getString("category_name") != null ? rs.getString("category_name") : "N/A";
-                books.add(new Book(rs.getInt("id"), rs.getString("title"), author, category, rs.getInt("total_quantity"), rs.getInt("available_quantity")));
+    // =============================================
+    // THUẬT TOÁN TẠO MÃ TÁC GIẢ TỪ TÊN + NĂM SINH
+    // =============================================
+    private String generateAuthorCode(String name, int birthYear) {
+        StringBuilder code = new StringBuilder();
+        // Cắt tên thành các từ (Ví dụ: "Nguyễn Văn A" -> ["Nguyễn", "Văn", "A"])
+        String[] words = name.trim().split("\\s+");
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                // Lấy chữ cái đầu tiên viết hoa (N, V, A)
+                code.append(word.substring(0, 1).toUpperCase());
             }
-        } catch (Exception e) {
-            System.out.println("❌ Error searching the book: " + e.getMessage());
         }
-        return books;
+        // Gắn thêm năm sinh vào đuôi (NVA1980)
+        code.append(birthYear);
+        return code.toString();
     }
 
-    // =========================================================================
-    // 4. TRÍ KHÔN NHÂN TẠO - QUẢN LÝ TÁC GIẢ & THÊM SÁCH
-    // =========================================================================
-    private int getOrCreateAuthorId(Connection conn, String authorName) throws SQLException {
-        String checkSql = "SELECT id FROM authors WHERE name = ?";
+    // Kiểm tra xem tác giả (dựa trên Mã NVA1980) đã có chưa
+    private long getOrCreateAuthorId(Connection conn, String authorName, int birthYear) throws SQLException {
+        String authorCode = generateAuthorCode(authorName, birthYear);
+
+        // 1. Tìm theo Mã tác giả thay vì Tên
+        String checkSql = "SELECT author_id FROM authors WHERE author_code = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-            checkStmt.setString(1, authorName);
+            checkStmt.setString(1, authorCode);
             ResultSet rs = checkStmt.executeQuery();
-            if (rs.next()) return rs.getInt("id");
+            if (rs.next()) return rs.getLong("author_id");
         }
-        String insertSql = "INSERT INTO authors (name) VALUES (?)";
+
+        // 2. Nếu chưa có, tạo mới với đầy đủ Mã, Tên, Năm sinh
+        String insertSql = "INSERT INTO authors (author_code, name, birth_year) VALUES (?, ?, ?)";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
-            insertStmt.setString(1, authorName);
+            insertStmt.setString(1, authorCode);
+            insertStmt.setString(2, authorName);
+            insertStmt.setInt(3, birthYear);
             insertStmt.executeUpdate();
             ResultSet keys = insertStmt.getGeneratedKeys();
-            if (keys.next()) return keys.getInt(1);
+            if (keys.next()) return keys.getLong(1);
         }
         throw new SQLException("Cannot create author!");
     }
 
-    public void addBook(String title, String authorName, int categoryId, int quantity) {
-        String sql = "INSERT INTO books (title, author_id, category_id, total_quantity, available_quantity) VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            int authorId = getOrCreateAuthorId(conn, authorName);
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, title);
-                pstmt.setInt(2, authorId);
-                pstmt.setInt(3, categoryId);
-                pstmt.setInt(4, quantity);
-                pstmt.setInt(5, quantity);
-                pstmt.executeUpdate();
-                System.out.println("✅ Added complete: " + title);
-            }
-        } catch (Exception e) {
-            System.out.println("❌ Error cannot added: " + e.getMessage());
+    private String generateBookCode(Connection conn, long categoryId, String categoryName) throws SQLException {
+        String prefix = categoryName.substring(0, 1).toUpperCase();
+        String countSql = "SELECT COUNT(*) FROM books WHERE category_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(countSql)) {
+            ps.setLong(1, categoryId);
+            ResultSet rs = ps.executeQuery();
+            int currentCount = 0;
+            if (rs.next()) currentCount = rs.getInt(1);
+            return String.format("%s%04d", prefix, currentCount + 1);
         }
     }
 
-    // 5. XÓA SÁCH (CÓ LÍNH GÁC CHỐNG XÓA KHI ĐANG CHO MƯỢN)
+    // UPDATE ĐỂ NHẬN THÊM birthYear
+    public boolean addBookSmart(String title, String authorName, int birthYear, long categoryId, String categoryName, int quantity) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // Gọi hàm tạo tác giả với năm sinh
+                long authorId = getOrCreateAuthorId(conn, authorName, birthYear);
+                String bookCode = generateBookCode(conn, categoryId, categoryName);
 
-    public boolean deleteBook(int id) {
-        // LÍNH GÁC: Kiểm tra xem sách có đang nằm trong phiếu mượn nào chưa trả không
-        String checkSql = "SELECT COUNT(*) FROM transactions WHERE book_id = ? AND status = 'BORROWED'";
-        String deleteSql = "DELETE FROM books WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            // Bước 1: Check hóa đơn
-            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                checkStmt.setInt(1, id);
-                ResultSet rs = checkStmt.executeQuery();
-                if (rs.next() && rs.getInt(1) > 0) {
-                    return false; // Phát hiện đang có người mượn -> Lập tức chặn lại (Trả về false)
+                String sql = "INSERT INTO books (book_code, title, author_id, category_id, total_quantity, available_quantity) VALUES (?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, bookCode);
+                    ps.setString(2, title);
+                    ps.setLong(3, authorId);
+                    ps.setLong(4, categoryId);
+                    ps.setInt(5, quantity);
+                    ps.setInt(6, quantity);
+                    ps.executeUpdate();
                 }
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                e.printStackTrace();
+                return false;
             }
-
-            // Bước 2: Nếu an toàn, tiến hành xóa
-            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
-                deleteStmt.setInt(1, id);
-                deleteStmt.executeUpdate();
-                return true; // Xóa thành công (Trả về true)
-            }
-        } catch (Exception e) {
-            System.out.println("❌ Error delete incomplete: " + e.getMessage());
+        } catch (SQLException e) {
+            e.printStackTrace();
             return false;
         }
     }
 
-    // 6. CẬP NHẬT SỐ LƯỢNG SÁCH (THÊM / BỚT)
+    public boolean deleteBook(long bookId) {
+        String checkSql = "SELECT COUNT(*) FROM transactions WHERE book_id = ? AND status = 'BORROWED'";
+        String deleteSql = "DELETE FROM books WHERE book_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement checkPs = conn.prepareStatement(checkSql);
+             PreparedStatement deletePs = conn.prepareStatement(deleteSql)) {
+            checkPs.setLong(1, bookId);
+            ResultSet rs = checkPs.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) return false;
+            deletePs.setLong(1, bookId);
+            return deletePs.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
-    public boolean updateBookQuantity(int bookId, int amountChange) {
-        // LÍNH GÁC: Kiểm tra số lượng hiện tại trước khi cho phép bớt
-        String checkSql = "SELECT total_quantity, available_quantity FROM books WHERE id = ?";
-        String updateSql = "UPDATE books SET total_quantity = total_quantity + ?, available_quantity = available_quantity + ? WHERE id = ?";
+    public boolean updateBookQuantity(long bookId, int amountChange) {
+        String sql = "UPDATE books SET total_quantity = total_quantity + ?, available_quantity = available_quantity + ? WHERE book_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, amountChange);
+            ps.setInt(2, amountChange);
+            ps.setLong(3, bookId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            // Bước 1: Kiểm tra xem nếu bớt sách (số âm) thì có bị lố không
-            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                checkStmt.setInt(1, bookId);
-                ResultSet rs = checkStmt.executeQuery();
-                if (rs.next()) {
-                    int currentAvail = rs.getInt("available_quantity");
+    // =======================================
+    // Lấy danh sách tác giả đưa lên ComboBox
+    // =======================================
+    public List<String> getAllAuthorsForUI() {
+        List<String> list = new ArrayList<>();
+        String sql = "SELECT author_id, name, birth_year FROM authors";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                // Hiển thị dạng: "1 - Stephen Hawking (1942)"
+                list.add(rs.getLong("author_id") + " - " + rs.getString("name") + " (" + rs.getInt("birth_year") + ")");
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 
-                    // Nếu muốn bớt sách, mà số lượng bớt lại nhiều hơn số sách đang nằm trên kệ -> CHẶN!
-                    if (currentAvail + amountChange < 0) {
-                        return false;
-                    }
-                } else {
-                    return false; // Không tìm thấy sách
+    // =====================================================
+    //Thêm sách bằng ID tác giả CÓ SẴN (Bỏ qua bước tạo mới)
+    // =====================================================
+    public boolean addBookWithExistingAuthor(String title, long authorId, long categoryId, String categoryName, int quantity) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                String bookCode = generateBookCode(conn, categoryId, categoryName);
+                String sql = "INSERT INTO books (book_code, title, author_id, category_id, total_quantity, available_quantity) VALUES (?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, bookCode);
+                    ps.setString(2, title);
+                    ps.setLong(3, authorId);
+                    ps.setLong(4, categoryId);
+                    ps.setInt(5, quantity);
+                    ps.setInt(6, quantity);
+                    ps.executeUpdate();
                 }
-            }
-
-            // Bước 2: An toàn rồi thì cho phép cập nhật số lượng
-            try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                updateStmt.setInt(1, amountChange);
-                updateStmt.setInt(2, amountChange);
-                updateStmt.setInt(3, bookId);
-                updateStmt.executeUpdate();
+                conn.commit();
                 return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                e.printStackTrace();
+                return false;
             }
-        } catch (Exception e) {
-            System.out.println("❌ Quantity update error: " + e.getMessage());
+        } catch (SQLException e) {
+            e.printStackTrace();
             return false;
         }
     }

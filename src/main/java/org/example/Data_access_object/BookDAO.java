@@ -104,22 +104,35 @@ public class BookDAO {
         return list;
     }
 
-    // =============================================
-    // THUẬT TOÁN TẠO MÃ TÁC GIẢ TỪ TÊN + NĂM SINH
-    // =============================================
+    // =========================================================
+    // THUẬT TOÁN TẠO MÃ TÁC GIẢ TỪ TÊN + NĂM SINH (CHUẨN 3 KÝ TỰ)
+    // =========================================================
     private String generateAuthorCode(String name, int birthYear) {
-        StringBuilder code = new StringBuilder();
-        // Cắt tên thành các từ (Ví dụ: "Nguyễn Văn A" -> ["Nguyễn", "Văn", "A"])
+        // Cắt tên thành các từ dựa trên khoảng trắng
         String[] words = name.trim().split("\\s+");
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                // Lấy chữ cái đầu tiên viết hoa (N, V, A)
-                code.append(word.substring(0, 1).toUpperCase());
-            }
+        StringBuilder prefix = new StringBuilder();
+
+        if (words.length >= 3) {
+            // KỊCH BẢN 1: Tên dài (>= 3 chữ) -> Lấy 3 chữ cuối
+            prefix.append(words[words.length - 3].substring(0, 1));
+            prefix.append(words[words.length - 2].substring(0, 1));
+            prefix.append(words[words.length - 1].substring(0, 1));
+        } else if (words.length == 2) {
+            // KỊCH BẢN 2: Tên có 2 chữ -> Lấy 2 chữ + thêm "0"
+            prefix.append(words[0].substring(0, 1));
+            prefix.append(words[1].substring(0, 1));
+            prefix.append("0");
+        } else if (words.length == 1 && !words[0].isEmpty()) {
+            // KỊCH BẢN 3: Tên có 1 chữ -> Lấy 1 chữ + thêm "00"
+            prefix.append(words[0].substring(0, 1));
+            prefix.append("00");
+        } else {
+            // Đề phòng trường hợp lỗi (Dù Form đã chặn)
+            prefix.append("UNK");
         }
-        // Gắn thêm năm sinh vào đuôi (NVA1980)
-        code.append(birthYear);
-        return code.toString();
+
+        // Chuyển tất cả thành chữ IN HOA và gắn năm sinh vào đuôi
+        return prefix.toString().toUpperCase() + birthYear;
     }
 
     // Kiểm tra xem tác giả (dựa trên Mã NVA1980) đã có chưa

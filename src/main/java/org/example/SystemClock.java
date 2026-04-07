@@ -2,22 +2,22 @@ package org.example;
 
 import java.time.LocalDate;
 
-// ĐÂY LÀ CỖ MÁY THỜI GIAN CỦA HỆ THỐNG
+// THIS IS THE SYSTEM'S TIME MACHINE
 public class SystemClock {
-    // Mặc định lấy ngày hôm nay của máy tính
+    // By default, the computer uses today's date.
     private static LocalDate simulatedDate = LocalDate.now();
 
-    // Hàm này sẽ thay thế toàn bộ lệnh LocalDate.now() trong hệ thống
+    // This function will replace the entire LocalDate.now() command in the system
     public static LocalDate now() {
         return simulatedDate;
     }
 
-    // Hàm tua nhanh thời gian (cộng thêm số ngày)
+    // Fast-forward function (adds days)
     public static void addDays(int days) {
         simulatedDate = simulatedDate.plusDays(days);
     }
 
-    // Reset về hiện tại nếu test xong
+    // Reset to the current time if the test is complete
     public static void reset() {
         simulatedDate = LocalDate.now();
     }

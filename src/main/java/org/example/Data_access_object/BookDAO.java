@@ -49,23 +49,23 @@ public class BookDAO {
         return list;
     }
 
-    // 2. OMNI-SEARCH CƠ BẢN (Dành cho BorrowPopup dùng lại)
+    // BASIC OMNI-SEARCH (Reused by BorrowPopup)
     public List<Book> searchOmni(String keyword) {
-        // Tái sử dụng hàm bên dưới với categoryId = 0 (Không lọc thể loại)
+        // Reuse the overloaded method below with categoryId = 0 (No category filtering)
         return searchOmni(keyword, 0);
     }
 
-    //OMNI-SEARCH + FILTER (Kết hợp Tìm kiếm & Lọc thể loại)
+    // ADVANCED OMNI-SEARCH + FILTER (Combines Keyword Search & Category Filtering)
     public List<Book> searchOmni(String keyword, long categoryId) {
         List<Book> list = new ArrayList<>();
-        // Câu lệnh SQL linh hoạt, có điều kiện lọc thể loại
+        // Dynamic SQL query with conditional category filtering
         String sql = "SELECT b.*, a.name AS author_name, c.name AS category_name " +
                 "FROM books b " +
                 "LEFT JOIN authors a ON b.author_id = a.author_id " +
                 "LEFT JOIN categories c ON b.category_id = c.category_id " +
                 "WHERE (b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?) ";
 
-        // Nếu categoryId > 0 tức là người dùng có chọn Thể loại để lọc
+        // If categoryId > 0, append the category filter condition
         if (categoryId > 0) {
             sql += " AND b.category_id = ?";
         }
@@ -79,7 +79,7 @@ public class BookDAO {
             ps.setString(3, searchPattern);
             ps.setString(4, searchPattern);
 
-            // Truyền thêm id thể loại vào câu truy vấn nếu có
+            // Bind the category ID parameter if category filtering is applied
             if (categoryId > 0) {
                 ps.setLong(5, categoryId);
             }
@@ -104,42 +104,41 @@ public class BookDAO {
         return list;
     }
 
-    // =========================================================
-    // THUẬT TOÁN TẠO MÃ TÁC GIẢ TỪ TÊN + NĂM SINH (CHUẨN 3 KÝ TỰ)
-    // =========================================================
+    // AUTHOR CODE GENERATION ALGORITHM (STANDARDIZED 3-CHARACTER PREFIX)
+
     private String generateAuthorCode(String name, int birthYear) {
-        // Cắt tên thành các từ dựa trên khoảng trắng
+        // Split the author's name into individual words based on whitespace
         String[] words = name.trim().split("\\s+");
         StringBuilder prefix = new StringBuilder();
 
         if (words.length >= 3) {
-            // KỊCH BẢN 1: Tên dài (>= 3 chữ) -> Lấy 3 chữ cuối
+            // SCENARIO 1: Long names (>= 3 words) -> Extract initials from the last 3 words
             prefix.append(words[words.length - 3].substring(0, 1));
             prefix.append(words[words.length - 2].substring(0, 1));
             prefix.append(words[words.length - 1].substring(0, 1));
         } else if (words.length == 2) {
-            // KỊCH BẢN 2: Tên có 2 chữ -> Lấy 2 chữ + thêm "0"
+            // SCENARIO 2: 2-word names -> Extract 2 initials and pad with "0"
             prefix.append(words[0].substring(0, 1));
             prefix.append(words[1].substring(0, 1));
             prefix.append("0");
         } else if (words.length == 1 && !words[0].isEmpty()) {
-            // KỊCH BẢN 3: Tên có 1 chữ -> Lấy 1 chữ + thêm "00"
+            // SCENARIO 3: Single-word names -> Extract 1 initial and pad with "00"
             prefix.append(words[0].substring(0, 1));
             prefix.append("00");
         } else {
-            // Đề phòng trường hợp lỗi (Dù Form đã chặn)
+            // Fallback for edge cases (Although prevented by UI validation)
             prefix.append("UNK");
         }
 
-        // Chuyển tất cả thành chữ IN HOA và gắn năm sinh vào đuôi
+        // Convert prefix to UPPERCASE and append the birth year
         return prefix.toString().toUpperCase() + birthYear;
     }
 
-    // Kiểm tra xem tác giả (dựa trên Mã NVA1980) đã có chưa
+    // Retrieve existing author ID or create a new author based on the generated code
     private long getOrCreateAuthorId(Connection conn, String authorName, int birthYear) throws SQLException {
         String authorCode = generateAuthorCode(authorName, birthYear);
 
-        // 1. Tìm theo Mã tác giả thay vì Tên
+        // 1. Search utilizing the unique Author Code rather than the name
         String checkSql = "SELECT author_id FROM authors WHERE author_code = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setString(1, authorCode);
@@ -147,7 +146,7 @@ public class BookDAO {
             if (rs.next()) return rs.getLong("author_id");
         }
 
-        // 2. Nếu chưa có, tạo mới với đầy đủ Mã, Tên, Năm sinh
+        // 2. If no match is found, insert a new author record with Code, Name, and Birth Year
         String insertSql = "INSERT INTO authors (author_code, name, birth_year) VALUES (?, ?, ?)";
         try (PreparedStatement insertStmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             insertStmt.setString(1, authorCode);
@@ -172,12 +171,12 @@ public class BookDAO {
         }
     }
 
-    // UPDATE ĐỂ NHẬN THÊM birthYear
+    // UPDATED TO ACCEPT BIRTH YEAR FOR ADVANCED AUTHOR VALIDATION
     public boolean addBookSmart(String title, String authorName, int birthYear, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                // Gọi hàm tạo tác giả với năm sinh
+                // Retrieve or auto-generate author ID
                 long authorId = getOrCreateAuthorId(conn, authorName, birthYear);
                 String bookCode = generateBookCode(conn, categoryId, categoryName);
 
@@ -235,9 +234,8 @@ public class BookDAO {
         }
     }
 
-    // =======================================
-    // Lấy danh sách tác giả đưa lên ComboBox
-    // =======================================
+    // RETRIEVE AUTHOR LIST FOR UI COMBOBOX POPULATION
+
     public List<String> getAllAuthorsForUI() {
         List<String> list = new ArrayList<>();
         String sql = "SELECT author_id, name, birth_year FROM authors";
@@ -245,16 +243,15 @@ public class BookDAO {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                // Hiển thị dạng: "1 - Stephen Hawking (1942)"
+                // Format output as: "1 - Stephen Hawking (1942)"
                 list.add(rs.getLong("author_id") + " - " + rs.getString("name") + " (" + rs.getInt("birth_year") + ")");
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
-    // =====================================================
-    //Thêm sách bằng ID tác giả CÓ SẴN (Bỏ qua bước tạo mới)
-    // =====================================================
+    // ADD BOOK USING AN EXISTING AUTHOR ID (Bypasses author creation)
+
     public boolean addBookWithExistingAuthor(String title, long authorId, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);

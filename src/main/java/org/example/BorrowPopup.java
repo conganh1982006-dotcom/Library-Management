@@ -22,9 +22,8 @@ public class BorrowPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
-        // ================================
         // PART 1: SELECT / ADD BORROWER
-        // ================================
+
         JLabel lblUser = new JLabel("BORROWER (Search by Name or Add New):");
         lblUser.setBounds(20, 10, 400, 25);
         add(lblUser);
@@ -90,9 +89,8 @@ public class BorrowPopup extends JDialog {
             }
         });
 
-        // ======================
         // PART 2: SELECT BOOK
-        // ======================
+
         JLabel lblBook = new JLabel("BOOK INVENTORY (Search by Title or Load All):");
         lblBook.setBounds(20, 250, 400, 25);
         add(lblBook);
@@ -138,9 +136,8 @@ public class BorrowPopup extends JDialog {
             }
         });
 
-        // ==========================================================
         // PART 3: CONFIRM BORROW
-        // ==========================================================
+
         JButton btnConfirm = new JButton("CONFIRM BORROW");
         btnConfirm.setBounds(270, 500, 300, 50);
         btnConfirm.setFont(new Font("SansSerif", Font.BOLD, 16));
@@ -157,7 +154,7 @@ public class BorrowPopup extends JDialog {
                 return;
             }
 
-            // FIX 4: Ép kiểu an toàn (Number) sang long/int để tránh lỗi ClassCastException
+            // FIX 4: Cast safely to long/int to avoid ClassCastException
             long userId = ((Number) tblUser.getValueAt(userRow, 0)).longValue();
             String userName = (String) tblUser.getValueAt(userRow, 1);
             int currentlyBorrowing = ((Number) tblUser.getValueAt(userRow, 3)).intValue();
@@ -178,14 +175,14 @@ public class BorrowPopup extends JDialog {
                 if (confirm != JOptionPane.YES_OPTION) return;
             }
 
-            // Gọi hàm mượn sách xịn xò có Transaction Control
+            // Calling a book borrowing function with Transaction Control
             transactionDAO.borrowBook(userId, bookId);
             JOptionPane.showMessageDialog(this, "Borrow Ticket Created for: " + userName + "\nBook: " + bookName);
 
             this.dispose();
         });
 
-        //Tự động tải dữ liệu mới nhất khi vừa mở Popup
+        //Automatically load the latest data when the popup is opened
         SwingUtilities.invokeLater(() -> {
             btnSearchUser.doClick();
             btnLoadBooks.doClick();

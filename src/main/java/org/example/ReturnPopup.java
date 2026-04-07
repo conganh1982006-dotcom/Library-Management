@@ -16,7 +16,7 @@ public class ReturnPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
-        // --- KHU VỰC TÌM KIẾM ---
+        // SEARCH AREA
         JLabel lblSearch = new JLabel("🔍 Search Borrower:");
         lblSearch.setBounds(20, 10, 150, 30);
         lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
@@ -30,7 +30,7 @@ public class ReturnPopup extends JDialog {
         btnSearch.setBounds(430, 10, 100, 30);
         add(btnSearch);
 
-        // --- CỘT CỦA BẢNG --- (Thêm Status và Fine)
+        // TABLE COLUMNS (Add Status and Fine)
         String[] cols = {"User ID", "Borrower Name", "Phone", "Book ID", "Book Title", "Borrow Date", "Due Date", "Status", "Fine (VND)"};
         DefaultTableModel model = new DefaultTableModel(cols, 0);
         JTable table = new JTable(model);
@@ -38,13 +38,13 @@ public class ReturnPopup extends JDialog {
         table.setFont(new Font("SansSerif", Font.PLAIN, 14));
         table.setRowHeight(25);
 
-        // 🌟 KỸ THUẬT TÀNG HÌNH ID (Giấu cột 0 và cột 3)
+        // ID Stealth Technique (Hide column 0 and column 3)
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(3).setMinWidth(0);
         table.getColumnModel().getColumn(3).setMaxWidth(0);
 
-        // Căn chỉnh cho đẹp
+        // Convert to Basic Latin
         table.getColumnModel().getColumn(1).setPreferredWidth(150); // Tên
         table.getColumnModel().getColumn(4).setPreferredWidth(200); // Tên sách
         table.getColumnModel().getColumn(7).setPreferredWidth(100); // Status
@@ -54,7 +54,7 @@ public class ReturnPopup extends JDialog {
         scrollPane.setBounds(20, 50, 940, 380);
         add(scrollPane);
 
-        // --- HÀM LOAD DATA ---
+        // LOAD DATA
         Runnable loadData = () -> {
             model.setRowCount(0);
             String keyword = txtSearch.getText().trim();
@@ -65,15 +65,15 @@ public class ReturnPopup extends JDialog {
             }
         };
 
-        // Tự động load tất cả khi mở Popup
+        // Automatically load all when the popup is opened
         loadData.run();
 
-        // Sự kiện nút Search
+        // Search button event
         btnSearch.addActionListener(e -> loadData.run());
-        // Mẹo UX: Gõ xong Enter là search luôn
+        // Type and press Enter to search immediately
         txtSearch.addActionListener(e -> loadData.run());
 
-        // --- NÚT CHỐT TRẢ ---
+        // PAYMENT BUTTON
         JButton btnConfirm = new JButton("CONFIRM RETURN");
         btnConfirm.setBounds(350, 440, 300, 50);
         btnConfirm.setFont(new Font("SansSerif", Font.BOLD, 16));
@@ -88,7 +88,7 @@ public class ReturnPopup extends JDialog {
                 return;
             }
 
-            // Lấy data từ các cột (Kể cả cột tàng hình)
+            // Retrieve data from columns (including invisible columns)
             long borrowerId = ((Number) table.getValueAt(selectedRow, 0)).longValue();
             String borrowerName = (String) table.getValueAt(selectedRow, 1);
             long bookId = ((Number) table.getValueAt(selectedRow, 3)).longValue();
@@ -96,10 +96,10 @@ public class ReturnPopup extends JDialog {
             String status = (String) table.getValueAt(selectedRow, 7);
             long fine = ((Number) table.getValueAt(selectedRow, 8)).longValue();
 
-            // Hiển thị Popup cảnh báo tiền phạt nếu có
-            String message = "Are you sure you want to process return for:\n👤 User: " + borrowerName + "\n📖 Book: " + bookTitle;
+            // Display a warning popup about potential fines, if applicable
+            String message = "Are you sure you want to process return for:\nUser: " + borrowerName + "\nBook: " + bookTitle;
             if (fine > 0) {
-                message += "\n\nATTENTION: This book is " + status + "!\n💸 FINE TO COLLECT: " + fine + " VND";
+                message += "\n\nATTENTION: This book is " + status + "!\nFINE TO COLLECT: " + fine + " VND";
             }
 
             int confirm = JOptionPane.showConfirmDialog(this, message, "Confirm Return", JOptionPane.YES_NO_OPTION);

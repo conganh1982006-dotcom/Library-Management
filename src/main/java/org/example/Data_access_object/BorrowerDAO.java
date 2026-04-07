@@ -8,7 +8,7 @@ import java.util.List;
 
 public class BorrowerDAO {
 
-    //LẤY TẤT CẢ NGƯỜI MƯỢN (Dành cho các bảng danh sách tiêu chuẩn)
+    // GET ALL BORROWERS (For standard list tables)
     public List<Borrower> getAllBorrowers() {
         List<Borrower> list = new ArrayList<>();
         String sql = "SELECT * FROM borrowers";
@@ -31,11 +31,11 @@ public class BorrowerDAO {
         return list;
     }
 
-    //TÌM KIẾM THÀNH VIÊN VÀ ĐẾM SÁCH MƯỢN (Dành cho UI Dashboard sếp viết sẵn)
+    // SEARCH FOR MEMBERS AND COUNT BORROWED BOOKS (For UI Dashboard pre-written by the boss)
     public List<Object[]> searchBorrower(String keyword) {
         List<Object[]> list = new ArrayList<>();
 
-        // FIX: Đổi b.id thành b.borrower_id cho khớp 100% với Database
+        // FIX: Change b.id to b.borrower_id to match the database 100%.
         String sql = "SELECT b.borrower_id, b.name, b.phone_number, " +
                 "(SELECT COUNT(*) FROM transactions t WHERE t.borrower_id = b.borrower_id AND t.status = 'BORROWED') AS borrowing_count " +
                 "FROM borrowers b WHERE b.name LIKE ?";
@@ -66,7 +66,7 @@ public class BorrowerDAO {
         return list;
     }
 
-    //THÊM KHÁCH MỚI (Đã chuẩn hóa dùng thẳng Model Borrower)
+    //ADD NEW GUEST (Standardized to use Borrower Model directly)
     public void addBorrower(Borrower borrower) {
         String sql = "INSERT INTO borrowers (name, phone_number, email) VALUES (?, ?, ?)";
 

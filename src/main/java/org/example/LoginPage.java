@@ -40,7 +40,7 @@ public class LoginPage {
         loginButton.setFont(new Font("SansSerif", Font.BOLD, 14));
         frame.add(loginButton);
 
-        // SỰ KIỆN ĐĂNG NHẬP
+        // LOGIN EVENT
         loginButton.addActionListener(e -> {
             String username = userText.getText().trim();
             String pass = new String(passwordText.getPassword()).trim();
@@ -50,10 +50,10 @@ public class LoginPage {
                 return;
             }
 
-            // Gọi lính gác xuống MySQL kiểm tra thẻ căn cước
+            // Call the guards down to MySQL to check
             String sql = "SELECT full_name, role FROM users WHERE username = ? AND password = ?";
 
-            // SỬ DỤNG DATABASE CONNECTION ĐÃ TẠO
+            // Use the created database connection
             try (Connection conn = DatabaseConnection.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -68,9 +68,9 @@ public class LoginPage {
 
                     JOptionPane.showMessageDialog(frame, "Welcome " + role + ": " + fullName + "!\nHave a good day.");
 
-                    frame.dispose(); // Đóng form đăng nhập
+                    frame.dispose(); // Close login form
 
-                    //CHỈ CẦN ĐÚNG 1 DÒNG NÀY: Truyền cái chức vụ vừa lấy được vào Dashboard!
+                    // JUST THIS ONE LINE: Transfer the newly acquired position to the Dashboard!
                     new MainDashBoard(role);
 
                 } else {
@@ -82,7 +82,7 @@ public class LoginPage {
             }
         });
 
-        //ĐỈNH CAO UX: Cho phép gõ xong pass bấm nút ENTER trên bàn phím là đăng nhập luôn!
+        //Allows you to type your password and press the ENTER key on your keyboard to log in instantly!
         frame.getRootPane().setDefaultButton(loginButton);
 
         frame.setVisible(true);

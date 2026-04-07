@@ -1,12 +1,12 @@
 package org.example.Data_access_object;
 
-import org.example.DatabaseConnection; // Gọi cầu nối xịn
-import org.example.services.FineService; // Giữ nguyên Service tính tiền phạt của sếp
-import org.example.SystemClock; // 🌟 IMPORT CỖ MÁY THỜI GIAN
+import org.example.DatabaseConnection; // Import the robust database connection bridge
+import org.example.services.FineService; // Retain the fine calculation service
+import org.example.SystemClock; // 🌟 IMPORT THE TIME MACHINE (Simulated System Clock)
 
 import java.sql.*;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit; // import này để Java biết cách tính toán ngày tháng:
+import java.time.temporal.ChronoUnit; // Import ChronoUnit for date/time calculations
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,38 +14,37 @@ public class TransactionDAO {
 
     private FineService fineService = new FineService();
 
-    // =======================================================
-    // MƯỢN SÁCH (Tự động trừ kho & Có bảo vệ giao dịch ACID)
-    // =======================================================
+    // BORROW BOOKS (Automatic inventory deduction & ACID transaction protection)
+
     public void borrowBook(long borrowerId, long bookId) {
         String insertTransSql = "INSERT INTO transactions (borrower_id, book_id, borrow_date, due_date, status) VALUES (?, ?, ?, ?, 'BORROWED')";
         String updateBookSql = "UPDATE books SET available_quantity = available_quantity - 1 WHERE book_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
-            // TẮT AUTO COMMIT: Đảm bảo nếu lỗi thì không ghi bậy vào Database
+            // DISABLE AUTO-COMMIT: Ensure data integrity by preventing partial updates in case of errors
             conn.setAutoCommit(false);
 
             try (PreparedStatement pstmt1 = conn.prepareStatement(insertTransSql);
                  PreparedStatement pstmt2 = conn.prepareStatement(updateBookSql)) {
 
-                // Bước 1: Tạo phiếu mượn
+                // Step 1: Create a borrow ticket (transaction record)
                 pstmt1.setLong(1, borrowerId);
                 pstmt1.setLong(2, bookId);
-                // 🌟 DÙNG GIỜ GIẢ LẬP ĐỂ TẠO PHIẾU
+                // USE SIMULATED TIME TO CREATE THE TICKET
                 pstmt1.setDate(3, Date.valueOf(SystemClock.now()));
-                pstmt1.setDate(4, Date.valueOf(SystemClock.now().plusDays(14))); // Hạn 14 ngày
+                pstmt1.setDate(4, Date.valueOf(SystemClock.now().plusDays(14))); // 14-day borrowing period
                 pstmt1.executeUpdate();
 
-                // Bước 2: Trừ sách trong kho
+                // Step 2: Deduct book quantity from inventory
                 pstmt2.setLong(1, bookId);
                 pstmt2.executeUpdate();
 
-                // NẾU CẢ 2 BƯỚC ĐỀU ỔN -> Chốt lưu vào Database
+                // IF BOTH STEPS ARE SUCCESSFUL -> Commit the transaction to the database
                 conn.commit();
                 System.out.println("Transaction created and inventory updated successfully!");
 
             } catch (SQLException ex) {
-                conn.rollback(); // Có biến là hoàn tác lại toàn bộ!
+                conn.rollback(); // An error occurred, rollback the entire transaction!
                 System.out.println("Rollback triggered! Error: " + ex.getMessage());
             }
         } catch (Exception e) {
@@ -53,9 +52,8 @@ public class TransactionDAO {
         }
     }
 
-    // =========================================================================
-    // TRẢ SÁCH (Cộng lại kho & Có bảo vệ giao dịch ACID)
-    // =========================================================================
+    // RETURN BOOKS (Restore inventory & Apply ACID transaction protection)
+
     public void returnBook(long borrowerId, long bookId) {
         String updateTransSql = "UPDATE transactions SET status = 'RETURNED', return_date = ? WHERE borrower_id = ? AND book_id = ? AND status = 'BORROWED' LIMIT 1";
         String updateBookSql = "UPDATE books SET available_quantity = available_quantity + 1 WHERE book_id = ?";
@@ -65,14 +63,14 @@ public class TransactionDAO {
 
             try (PreparedStatement pstmt1 = conn.prepareStatement(updateTransSql)) {
 
-                // Bước 1: Cập nhật trạng thái phiếu mượn thành RETURNED
-                // 🌟 GHI NHẬN NGÀY TRẢ LÀ NGÀY GIẢ LẬP
+                // Step 1: Update the transaction status to RETURNED
+                // RECORD THE RETURN DATE USING SIMULATED TIME
                 pstmt1.setDate(1, Date.valueOf(SystemClock.now()));
                 pstmt1.setLong(2, borrowerId);
                 pstmt1.setLong(3, bookId);
                 int updatedRows = pstmt1.executeUpdate();
 
-                // Bước 2: Chỉ cộng lại kho NẾU phiếu mượn thực sự được cập nhật
+                // Step 2: Only restore the inventory IF the transaction was successfully updated
                 if (updatedRows > 0) {
                     try (PreparedStatement pstmt2 = conn.prepareStatement(updateBookSql)) {
                         pstmt2.setLong(1, bookId);
@@ -93,12 +91,11 @@ public class TransactionDAO {
         }
     }
 
-    // =====================================
-    // HIỂN THỊ DANH SÁCH GIAO DIỆN CHÍNH
-    // =====================================
+    // DISPLAY LIST ON THE MAIN DASHBOARD
+
     public String getBorrowerListForUI() {
         StringBuilder result = new StringBuilder();
-        // Sửa lại chuẩn tên cột ID của các bảng
+        // Standardize ID column names for joined tables
         String sql = "SELECT br.name AS borrower_name, br.phone_number, bk.title AS book_title, t.borrow_date, t.due_date " +
                 "FROM transactions t " +
                 "JOIN borrowers br ON t.borrower_id = br.borrower_id " +
@@ -109,7 +106,7 @@ public class TransactionDAO {
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
 
-            // LẤY GIỜ GIẢ LẬP ĐỂ TÍNH TOÁN
+            // RETRIEVE SIMULATED TIME FOR CALCULATIONS
             LocalDate today = SystemClock.now();
             while (rs.next()) {
                 String borrowerName = rs.getString("borrower_name");
@@ -122,16 +119,16 @@ public class TransactionDAO {
                     phoneStr = "N/A";
                 }
 
-                // Tính số ngày chênh lệch giữa ngày trả và ngày hôm nay
+                // Calculate the difference in days between the due date and today
                 long daysLate = ChronoUnit.DAYS.between(dueDate, today);
 
-                // THUẬT TOÁN TÍNH "DAY LEFT"
+                // "DAYS LEFT" CALCULATION ALGORITHM
                 String daysStatus;
-                if (daysLate < 0) { // Nếu today nhỏ hơn dueDate -> CÒN HẠN
+                if (daysLate < 0) { // If today is before due date -> STILL WITHIN LIMIT
                     daysStatus = "⏳ " + Math.abs(daysLate) + " days left";
-                } else if (daysLate == 0) { // Nếu today bằng dueDate -> ĐẾN HẠN HÔM NAY
+                } else if (daysLate == 0) { // If today equals due date -> DUE TODAY
                     daysStatus = "DUE TODAY";
-                } else { // Nếu today lớn hơn dueDate -> TRỄ HẠN
+                } else { // If today is after due date -> OVERDUE
                     daysStatus = "OVERDUE by " + daysLate + " days!";
                 }
 
@@ -142,7 +139,7 @@ public class TransactionDAO {
                         .append("   Book: ").append(bookTitle).append("\n")
                         .append("   Borrowed: ").append(borrowDate)
                         .append("  | Due: ").append(dueDate).append("\n")
-                        .append("   ").append(daysStatus).append("\n") // Chèn dòng báo trạng thái vào đây
+                        .append("   ").append(daysStatus).append("\n") // Insert status message line here
                         .append("   Fine: ").append(fineText).append("\n")
                         .append("---------------------------------------------------\n");
             }
@@ -154,13 +151,11 @@ public class TransactionDAO {
         return result.toString();
     }
 
-    // =================================================================
-    // LẤY DỮ LIỆU ĐỔ VÀO BẢNG POPUP TRẢ SÁCH (Đã có Search & Tính phạt)
-    // =================================================================
-    // Thêm tham số keyword để tìm kiếm theo tên
+    // FETCH DATA FOR THE RETURN POPUP TABLE (Includes Search & Fine Calculation)
+    // Add a keyword parameter to search by borrower name
     public List<Object[]> getActiveTransactionsForTable(String keyword) {
         List<Object[]> list = new ArrayList<>();
-        // Dùng LIKE để tìm tên người mượn
+        // Use LIKE operator to find borrower names
         String sql = "SELECT t.borrower_id, br.name, br.phone_number, t.book_id, bk.title, t.borrow_date, t.due_date " +
                 "FROM transactions t " +
                 "JOIN borrowers br ON t.borrower_id = br.borrower_id " +
@@ -168,12 +163,12 @@ public class TransactionDAO {
                 "WHERE t.status = 'BORROWED' AND br.name LIKE ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt =prepareStatement(conn, sql)) {
+             PreparedStatement pstmt = prepareStatement(conn, sql)) {
 
-            pstmt.setString(1, "%" + keyword + "%"); // Gắn từ khóa tìm kiếm
+            pstmt.setString(1, "%" + keyword + "%"); // Bind the search keyword
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                // LẤY GIỜ GIẢ LẬP ĐỂ TÍNH TOÁN
+                // RETRIEVE SIMULATED TIME FOR CALCULATIONS
                 LocalDate today = SystemClock.now();
 
                 while (rs.next()) {
@@ -184,19 +179,19 @@ public class TransactionDAO {
 
                     LocalDate dueLocal = rs.getDate("due_date").toLocalDate();
 
-                    // Tính số ngày chênh lệch
+                    // Calculate day difference
                     long daysLate = ChronoUnit.DAYS.between(dueLocal, today);
                     String statusStr;
                     long fine = 0;
 
-                    // Phân loại trạng thái đưa lên bảng
+                    // Classify status to display on the table
                     if (daysLate < 0) {
                         statusStr = Math.abs(daysLate) + " days left";
                     } else if (daysLate == 0) {
                         statusStr = "Due Today";
                     } else {
                         statusStr = "Late " + daysLate + " days";
-                        fine = fineService.calculateFine(daysLate); // Tính tiền phạt nếu trễ
+                        fine = fineService.calculateFine(daysLate); // Calculate fine if overdue
                     }
 
                     list.add(new Object[]{
@@ -207,8 +202,8 @@ public class TransactionDAO {
                             rs.getString("title"),
                             rs.getDate("borrow_date"),
                             rs.getDate("due_date"),
-                            statusStr, //CỘT MỚI: Trạng thái ngày
-                            fine       //CỘT MỚI: Tiền phạt
+                            statusStr, // NEW COLUMN: Day status
+                            fine       // NEW COLUMN: Fine amount
                     });
                 }
             }
@@ -218,7 +213,7 @@ public class TransactionDAO {
         return list;
     }
 
-    // Helper method (phụ trợ) để cho code nó không lỗi báo đỏ ở hàm prepareStatement bên trên
+    // Helper method to resolve IDE syntax highlighting issues for prepareStatement
     private PreparedStatement prepareStatement(Connection conn, String sql) throws SQLException {
         return conn.prepareStatement(sql);
     }

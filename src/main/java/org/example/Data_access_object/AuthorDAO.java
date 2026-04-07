@@ -8,7 +8,7 @@ import java.util.List;
 
 public class AuthorDAO {
 
-    // 1. Lấy danh sách tất cả tác giả (Dùng để hiện lên giao diện)
+    // 1. Get a list of all authors (Used to display the interface)
     public List<Author> getAllAuthors() {
         List<Author> list = new ArrayList<>();
         String sql = "SELECT * FROM authors";
@@ -29,7 +29,7 @@ public class AuthorDAO {
         return list;
     }
 
-    // 2. Thêm tác giả mới
+    // 2. Add new authors
     public void addAuthor(Author author) {
         String sql = "INSERT INTO authors (name) VALUES (?)";
 
@@ -44,7 +44,7 @@ public class AuthorDAO {
         }
     }
 
-    // 3. Xóa tác giả theo ID
+    // 3. Remove author by ID
     public void deleteAuthor(long id) {
         String sql = "DELETE FROM authors WHERE author_id = ?";
 

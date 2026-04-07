@@ -9,7 +9,7 @@ public class Book {
     private int totalQuantity;
     private int availableQuantity;
 
-    // THÊM 2 BIẾN NÀY ĐỂ CHỨA TÊN HIỂN THỊ LÊN BẢNG
+    // ADD THESE 2 VARIABLES TO CONTAIN THE NAMES TO BE DISPLAYED ON THE TABLE
     private String authorName;
     private String categoryName;
 
@@ -25,7 +25,7 @@ public class Book {
         this.availableQuantity = availableQuantity;
     }
 
-    // Getters and Setters gốc
+    // Original Getters and Setters
     public long getBookId() { return bookId; }
     public void setBookId(long bookId) { this.bookId = bookId; }
     public String getBookCode() { return bookCode; }
@@ -41,7 +41,7 @@ public class Book {
     public int getAvailableQuantity() { return availableQuantity; }
     public void setAvailableQuantity(int availableQuantity) { this.availableQuantity = availableQuantity; }
 
-    // Getters and Setters cho Tên Tác Giả & Thể Loại
+    // Getters and Setters for Author Name & Genre
     public String getAuthorName() { return authorName; }
     public void setAuthorName(String authorName) { this.authorName = authorName; }
     public String getCategoryName() { return categoryName; }

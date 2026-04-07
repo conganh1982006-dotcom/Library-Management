@@ -14,10 +14,10 @@ public class MainDashBoard {
     private final TransactionDAO transactionTool = new TransactionDAO();
     private JButton btnLoadBooksTab1;
 
-    // BIẾN LƯU TRỮ QUYỀN CỦA NGƯỜI DÙNG
+    // VARIABLE STORING USER PERMISSIONS
     private String userRole;
 
-    // SỬA CONSTRUCTOR ĐỂ NHẬN QUYỀN KHI ĐĂNG NHẬP
+    // Edit the constructor to get permissions when logging in
     public MainDashBoard(String role) {
         this.userRole = role;
 
@@ -70,7 +70,7 @@ public class MainDashBoard {
         btnSearchAll.setBounds(1010, 10, 140, 35);
         panel.add(btnSearchAll);
 
-        // HINT ĐÃ ĐƯỢC LÀM NGẮN GỌN VÀ RÕ RÀNG HƠN
+        // HINT HAS BEEN MADE SHORTER AND CLEARER
         JLabel lblSearchHint = new JLabel(" Tip: Search BookID = category + number (e.g. P0001) or Author ID = acronym + birth year (e.g. TKD1990)");
         lblSearchHint.setBounds(500, 45, 700, 25);
         lblSearchHint.setFont(new Font("SansSerif", Font.ITALIC, 13));

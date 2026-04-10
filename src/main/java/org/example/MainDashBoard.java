@@ -71,7 +71,7 @@ public class MainDashBoard {
         panel.add(btnSearchAll);
 
         // HINT HAS BEEN MADE SHORTER AND CLEARER
-        JLabel lblSearchHint = new JLabel(" Tip: Search BookID = category + number (e.g. P0001) or Author ID = acronym + birth year (e.g. TKD1990)");
+        JLabel lblSearchHint = new JLabel("Tip: Search BookID = category + number (e.g. P0001) or Author ID = acronym + birth year (e.g. TKD1990)");
         lblSearchHint.setBounds(500, 45, 700, 25);
         lblSearchHint.setFont(new Font("SansSerif", Font.ITALIC, 13));
         lblSearchHint.setForeground(Color.GRAY);
@@ -315,8 +315,9 @@ public class MainDashBoard {
         btnBorrow.setBounds(190, 20, 160, 35);
         panel.add(btnBorrow);
 
-        JButton btnReturn = new JButton("Return Book");
-        btnReturn.setBounds(360, 20, 160, 35);
+        // BUTTON RENAMED AND EXPANDED TO INCLUDE RENEW FEATURE
+        JButton btnReturn = new JButton("Return / Renew Book");
+        btnReturn.setBounds(360, 20, 190, 35);
         panel.add(btnReturn);
 
         JLabel lblDate = new JLabel("System Date:" + SystemClock.now());
@@ -376,6 +377,7 @@ public class MainDashBoard {
         });
 
         btnReturn.addActionListener(e -> {
+            // When clicked, ReturnPopup appears containing both Return and Renew functionalities
             ReturnPopup popup = new ReturnPopup((JFrame) SwingUtilities.getWindowAncestor(panel));
             popup.setVisible(true);
             btnLoad.doClick();

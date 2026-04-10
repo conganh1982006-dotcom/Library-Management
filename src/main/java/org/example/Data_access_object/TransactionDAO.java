@@ -2,7 +2,7 @@ package org.example.Data_access_object;
 
 import org.example.DatabaseConnection; // Import the robust database connection bridge
 import org.example.services.FineService; // Retain the fine calculation service
-import org.example.SystemClock; // 🌟 IMPORT THE TIME MACHINE (Simulated System Clock)
+import org.example.SystemClock; // IMPORT THE TIME MACHINE (Simulated System Clock)
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -125,7 +125,7 @@ public class TransactionDAO {
                 // "DAYS LEFT" CALCULATION ALGORITHM
                 String daysStatus;
                 if (daysLate < 0) { // If today is before due date -> STILL WITHIN LIMIT
-                    daysStatus = "⏳ " + Math.abs(daysLate) + " days left";
+                    daysStatus = "Late " + Math.abs(daysLate) + " days left";
                 } else if (daysLate == 0) { // If today equals due date -> DUE TODAY
                     daysStatus = "DUE TODAY";
                 } else { // If today is after due date -> OVERDUE
@@ -133,9 +133,9 @@ public class TransactionDAO {
                 }
 
                 long fineAmount = fineService.calculateFine(daysLate);
-                String fineText = (fineAmount > 0) ? (fineAmount + " VND ⚠️") : "0 VND";
+                String fineText = (fineAmount > 0) ? (fineAmount + " VND ") : "0 VND";
 
-                result.append("👤 Borrower: ").append(borrowerName).append(" - [Phone: ").append(phoneStr).append("]\n")
+                result.append("Borrower: ").append(borrowerName).append(" - [Phone: ").append(phoneStr).append("]\n")
                         .append("   Book: ").append(bookTitle).append("\n")
                         .append("   Borrowed: ").append(borrowDate)
                         .append("  | Due: ").append(dueDate).append("\n")
@@ -216,5 +216,27 @@ public class TransactionDAO {
     // Helper method to resolve IDE syntax highlighting issues for prepareStatement
     private PreparedStatement prepareStatement(Connection conn, String sql) throws SQLException {
         return conn.prepareStatement(sql);
+    }
+
+    // RENEW BOOK (Extend borrowing period)
+    public boolean renewBook(long borrowerId, long bookId, int extraDays) {
+        // Use MySQL's DATE_ADD to directly increment the due date in the database
+        String sql = "UPDATE transactions SET due_date = DATE_ADD(due_date, INTERVAL ? DAY) " +
+                "WHERE borrower_id = ? AND book_id = ? AND status = 'BORROWED'";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, extraDays);   // Number of days to extend (e.g., 7)
+            pstmt.setLong(2, borrowerId);
+            pstmt.setLong(3, bookId);
+
+            int rowsUpdated = pstmt.executeUpdate();
+            return rowsUpdated > 0; // Return true if the renewal was successful
+
+        } catch (SQLException e) {
+            System.out.println("Database Error during renewal: " + e.getMessage());
+            return false;
+        }
     }
 }

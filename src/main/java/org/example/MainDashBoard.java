@@ -307,9 +307,8 @@ public class MainDashBoard {
         return panel;
     }
 
-    // ==========================================
     // USER MANAGEMENT TAB (BORROWERS)
-    // ==========================================
+
     private JPanel createBorrowerPanel() {
         JPanel panel = new JPanel(null);
 

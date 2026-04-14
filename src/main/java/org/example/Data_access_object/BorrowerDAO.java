@@ -8,25 +8,22 @@ import java.util.List;
 
 public class BorrowerDAO {
 
-    // =========================================================
     // 1. STRICT PHONE VALIDATION (7-8 Digits)
-    // =========================================================
+
     public boolean isValidPhoneNumber(String phone) {
         // Regex to check if the string contains only digits (0-9) and has an exact length of 7 or 8 characters
         return phone != null && phone.matches("^[0-9]{7,8}$");
     }
 
-    // =========================================================
     // 1.5 STRICT EMAIL VALIDATION (Must be @gmail.com)
-    // =========================================================
+
     public boolean isValidEmail(String email) {
         // Regex to ensure the string starts with alphanumeric characters and ends strictly with @gmail.com
         return email != null && email.matches("^[a-zA-Z0-9._]+@gmail\\.com$");
     }
 
-    // =========================================================
     // 2. SMART BORROWER CODE GENERATOR (e.g., Le Nguyen Van A -> NVA6879)
-    // =========================================================
+
     private String generateBorrowerCode(String fullName, String phone) {
         String[] words = fullName.trim().split("\\s+");
         StringBuilder prefix = new StringBuilder();
@@ -52,9 +49,8 @@ public class BorrowerDAO {
         return prefix.toString().toUpperCase() + suffix;
     }
 
-    // =========================================================
     // 3. CREATE NEW BORROWER (Integrated with automatic code generation)
-    // =========================================================
+
     public boolean addBorrower(String name, String email, String phone) {
         String code = generateBorrowerCode(name, phone);
 
@@ -79,9 +75,8 @@ public class BorrowerDAO {
         }
     }
 
-    // =========================================================
     // 4. OMNI-SEARCH BORROWERS (PRIORITY FROM LEFT TO RIGHT)
-    // =========================================================
+
     public List<Object[]> searchBorrowers(String keyword) {
         List<Object[]> list = new ArrayList<>();
 
@@ -127,9 +122,8 @@ public class BorrowerDAO {
         return list;
     }
 
-    // =========================================================
     // 5. SAFE DELETE (Block deletion if the user is currently holding borrowed books)
-    // =========================================================
+
     public boolean deleteBorrower(long borrowerId) {
         String checkSql = "SELECT COUNT(*) FROM transactions WHERE borrower_id = ? AND status = 'BORROWED'";
         String deleteSql = "DELETE FROM borrowers WHERE borrower_id = ?";
@@ -154,9 +148,7 @@ public class BorrowerDAO {
         }
     }
 
-    // =========================================================
     // LEGACY CODE: RETAINED TO PREVENT APPLICATION ERRORS
-    // =========================================================
 
     public List<Borrower> getAllBorrowers() {
         List<Borrower> list = new ArrayList<>();

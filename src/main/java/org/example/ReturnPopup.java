@@ -16,9 +16,8 @@ public class ReturnPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
-        // ==========================================
         // SEARCH AREA
-        // ==========================================
+
         JLabel lblSearch = new JLabel("Search Borrower:");
         lblSearch.setBounds(20, 10, 150, 30);
         lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
@@ -32,9 +31,8 @@ public class ReturnPopup extends JDialog {
         btnSearch.setBounds(430, 10, 100, 30);
         add(btnSearch);
 
-        // ==========================================
         // TABLE COLUMNS CONFIGURATION
-        // ==========================================
+
         String[] cols = {"User ID", "Borrower Name", "Phone", "Book ID", "Book Title", "Borrow Date", "Due Date", "Status", "Fine (VND)"};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override
@@ -63,9 +61,8 @@ public class ReturnPopup extends JDialog {
         scrollPane.setBounds(20, 50, 940, 380);
         add(scrollPane);
 
-        // ==========================================
         // DYNAMIC DATA LOADER
-        // ==========================================
+
         Runnable loadData = () -> {
             model.setRowCount(0);
             String keyword = txtSearch.getText().trim();
@@ -83,9 +80,8 @@ public class ReturnPopup extends JDialog {
         btnSearch.addActionListener(e -> loadData.run());
         txtSearch.addActionListener(e -> loadData.run()); // Type and press Enter
 
-        // ==========================================
         // BUTTON 1: CONFIRM RETURN
-        // ==========================================
+
         JButton btnConfirmReturn = new JButton("CONFIRM RETURN");
         btnConfirmReturn.setBounds(230, 440, 250, 50);
         btnConfirmReturn.setFont(new Font("SansSerif", Font.BOLD, 16));
@@ -127,9 +123,8 @@ public class ReturnPopup extends JDialog {
             }
         });
 
-        // ==========================================
         // BUTTON 2: RENEW (+7 DAYS)
-        // ==========================================
+
         JButton btnRenew = new JButton("RENEW (+7 DAYS)");
         btnRenew.setBounds(520, 440, 250, 50);
         btnRenew.setFont(new Font("SansSerif", Font.BOLD, 16));

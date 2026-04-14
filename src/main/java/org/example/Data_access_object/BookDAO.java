@@ -49,17 +49,15 @@ public class BookDAO {
         return list;
     }
 
-    // =========================================================
     // BASIC OMNI-SEARCH (Reused by BorrowPopup)
-    // =========================================================
+
     public List<Book> searchOmni(String keyword) {
         // Reuse the overloaded method below with default "All Fields" and no category filter
         return searchOmni(keyword, "All Fields", 0);
     }
 
-    // =========================================================
     // ADVANCED DYNAMIC SEARCH (Combines Keyword, Search Type & Category Filtering)
-    // =========================================================
+
     public List<Book> searchOmni(String keyword, String searchType, long categoryId) {
         List<Book> list = new ArrayList<>();
 
@@ -139,9 +137,8 @@ public class BookDAO {
         return list;
     }
 
-    // =========================================================
     // AUTHOR CODE GENERATION ALGORITHM (STANDARDIZED 3-CHARACTER PREFIX)
-    // =========================================================
+
     private String generateAuthorCode(String name, int birthYear) {
         // Split the author's name into individual words based on whitespace
         String[] words = name.trim().split("\\s+");

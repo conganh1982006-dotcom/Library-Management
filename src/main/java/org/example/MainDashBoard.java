@@ -2,6 +2,7 @@ package org.example;
 
 import org.example.Data_access_object.BookDAO;
 import org.example.Data_access_object.TransactionDAO;
+import org.example.Data_access_object.BorrowerDAO;
 import org.example.models.Book;
 import org.example.models.Category;
 
@@ -12,12 +13,11 @@ import java.util.List;
 public class MainDashBoard {
     private final BookDAO bookTool = new BookDAO();
     private final TransactionDAO transactionTool = new TransactionDAO();
+    private final BorrowerDAO borrowerTool = new BorrowerDAO();
     private JButton btnLoadBooksTab1;
 
-    // VARIABLE STORING USER PERMISSIONS
     private String userRole;
 
-    // Edit the constructor to get permissions when logging in
     public MainDashBoard(String role) {
         this.userRole = role;
 
@@ -32,6 +32,8 @@ public class MainDashBoard {
         tabbedPane.addTab("  Book Inventory  ", createBookPanel());
         tabbedPane.addTab("  Borrow & Return  ", createTransactionPanel());
 
+        tabbedPane.addTab("  User Management  ", createBorrowerPanel());
+
         frame.add(tabbedPane);
         frame.setVisible(true);
     }
@@ -40,11 +42,11 @@ public class MainDashBoard {
         JPanel panel = new JPanel(null);
 
         btnLoadBooksTab1 = new JButton("Load Books");
-        btnLoadBooksTab1.setBounds(20, 10, 130, 35);
+        btnLoadBooksTab1.setBounds(20, 10, 120, 35);
         panel.add(btnLoadBooksTab1);
 
-        JLabel lblCategory = new JLabel("Filter:");
-        lblCategory.setBounds(170, 10, 50, 35);
+        JLabel lblCategory = new JLabel("Category:");
+        lblCategory.setBounds(150, 10, 70, 35);
         lblCategory.setFont(new Font("SansSerif", Font.BOLD, 14));
         panel.add(lblCategory);
 
@@ -54,24 +56,28 @@ public class MainDashBoard {
         for (Category c : dbCategories) {
             cbFilter.addItem(c.getName());
         }
-        cbFilter.setBounds(220, 10, 160, 35);
+        cbFilter.setBounds(230, 10, 150, 35);
         panel.add(cbFilter);
 
-        JLabel lblSearch = new JLabel("Search:");
-        lblSearch.setBounds(700, 10, 60, 35);
+        JLabel lblSearch = new JLabel("Search by:");
+        lblSearch.setBounds(400, 10, 80, 35);
         lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
         panel.add(lblSearch);
 
+        String[] searchTypes = {"All Fields", "Title", "Author", "ID (Book/Author)"};
+        JComboBox<String> cbSearchType = new JComboBox<>(searchTypes);
+        cbSearchType.setBounds(480, 10, 140, 35);
+        panel.add(cbSearchType);
+
         JTextField txtSearchBook = new JTextField();
-        txtSearchBook.setBounds(770, 10, 230, 35);
+        txtSearchBook.setBounds(630, 10, 380, 35);
         panel.add(txtSearchBook);
 
-        JButton btnSearchAll = new JButton("Search All");
-        btnSearchAll.setBounds(1010, 10, 140, 35);
+        JButton btnSearchAll = new JButton("Search");
+        btnSearchAll.setBounds(1020, 10, 140, 35);
         panel.add(btnSearchAll);
 
-        // HINT HAS BEEN MADE SHORTER AND CLEARER
-        JLabel lblSearchHint = new JLabel("Tip: Search BookID = category + number (e.g. P0001) or Author ID = acronym + birth year (e.g. TKD1990)");
+        JLabel lblSearchHint = new JLabel("Tip: Select specific filters (Title, Author, or ID) to narrow down your search results.");
         lblSearchHint.setBounds(500, 45, 700, 25);
         lblSearchHint.setFont(new Font("SansSerif", Font.ITALIC, 13));
         lblSearchHint.setForeground(Color.GRAY);
@@ -91,17 +97,17 @@ public class MainDashBoard {
 
         if ("STAFF".equalsIgnoreCase(userRole)) {
             btnAdd.setEnabled(false);
-            btnAdd.setToolTipText("Only ADMIN can add new books!");
-
             btnUpdateQty.setEnabled(false);
-            btnUpdateQty.setToolTipText("Only ADMIN can update inventory!");
-
             btnDelete.setEnabled(false);
-            btnDelete.setToolTipText("Only ADMIN can delete books!");
         }
 
         String[] columnNames = {"Book ID", "Code", "Title", "Author", "Category", "Total Qty", "Available Qty"};
-        javax.swing.table.DefaultTableModel tableModel = new javax.swing.table.DefaultTableModel(columnNames, 0);
+        javax.swing.table.DefaultTableModel tableModel = new javax.swing.table.DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         JTable table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -110,8 +116,6 @@ public class MainDashBoard {
 
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
-        table.getColumnModel().getColumn(0).setWidth(0);
-        table.getColumnModel().getColumn(0).setPreferredWidth(0);
 
         table.getColumnModel().getColumn(2).setPreferredWidth(350);
 
@@ -121,6 +125,8 @@ public class MainDashBoard {
 
         btnSearchAll.addActionListener(e -> {
             String keyword = txtSearchBook.getText().trim();
+            String searchType = (String) cbSearchType.getSelectedItem();
+
             int selectedIndex = cbFilter.getSelectedIndex();
             long categoryId = 0;
             if (selectedIndex > 0) {
@@ -128,21 +134,22 @@ public class MainDashBoard {
             }
 
             tableModel.setRowCount(0);
-            List<Book> books = bookTool.searchOmni(keyword, categoryId);
-
+            List<Book> books = bookTool.searchOmni(keyword, searchType, categoryId);
             for (Book b : books) {
                 tableModel.addRow(new Object[]{ b.getBookId(), b.getBookCode(), b.getTitle(), b.getAuthorName(), b.getCategoryName(), b.getTotalQuantity(), b.getAvailableQuantity() });
-            }
-            if (books.isEmpty() && (!keyword.isEmpty() || categoryId > 0)) {
-                JOptionPane.showMessageDialog(panel, "No results found!", "Search Result", JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
         cbFilter.addActionListener(e -> btnSearchAll.doClick());
+        cbSearchType.addActionListener(e -> btnSearchAll.doClick());
+
+        // Trigger search automatically when the Enter key is pressed in the text field
+        txtSearchBook.addActionListener(e -> btnSearchAll.doClick());
 
         btnLoadBooksTab1.addActionListener(e -> {
             txtSearchBook.setText("");
             cbFilter.setSelectedIndex(0);
+            cbSearchType.setSelectedIndex(0);
             btnSearchAll.doClick();
         });
 
@@ -152,38 +159,24 @@ public class MainDashBoard {
                 JOptionPane.showMessageDialog(panel, "Please select a book from the table first!");
                 return;
             }
-
             long bookId = ((Number) table.getValueAt(selectedRow, 0)).longValue();
             String bookTitle = (String) table.getValueAt(selectedRow, 2);
             int currentAvailableQty = ((Number) table.getValueAt(selectedRow, 6)).intValue();
 
-            String input = JOptionPane.showInputDialog(panel,
-                    "Book: " + bookTitle + "\nCurrent Available: " + currentAvailableQty +
-                            "\n\n• Enter a POSITIVE number to add copies\n• Enter a NEGATIVE number to remove copies",
-                    "Update Quantity", JOptionPane.QUESTION_MESSAGE);
-
+            String input = JOptionPane.showInputDialog(panel, "Book: " + bookTitle + "\nCurrent Available: " + currentAvailableQty + "\n\nEnter amount (+ or -):", "Update Quantity", JOptionPane.QUESTION_MESSAGE);
             if (input != null && !input.trim().isEmpty()) {
                 try {
                     int amountChange = Integer.parseInt(input.trim());
                     if (amountChange == 0) return;
-
                     if (amountChange < 0 && Math.abs(amountChange) > currentAvailableQty) {
-                        JOptionPane.showMessageDialog(panel,
-                                "You can't throw away more books than you have on the shelves!\n" +
-                                        "Currently have: " + currentAvailableQty + " books.",
-                                "Invalid Quantity", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(panel, "Invalid Quantity!", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                     }
-
-                    boolean success = bookTool.updateBookQuantity(bookId, amountChange);
-                    if (success) {
-                        JOptionPane.showMessageDialog(panel, "Quantity updated successfully!");
+                    if (bookTool.updateBookQuantity(bookId, amountChange)) {
                         btnLoadBooksTab1.doClick();
-                    } else {
-                        JOptionPane.showMessageDialog(panel, "ERROR: Cannot update quantity.", "Update Blocked", JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(panel, "Please enter a valid whole number!");
+                    JOptionPane.showMessageDialog(panel, "Invalid number!");
                 }
             }
         });
@@ -192,10 +185,7 @@ public class MainDashBoard {
             JTextField txtTitle = new JTextField();
             JComboBox<String> cbAuthor = new JComboBox<>();
             cbAuthor.addItem("CREATE A NEW AUTHOR");
-            List<String> dbAuthors = bookTool.getAllAuthorsForUI();
-            for (String a : dbAuthors) {
-                cbAuthor.addItem(a);
-            }
+            for (String a : bookTool.getAllAuthorsForUI()) cbAuthor.addItem(a);
 
             JTextField txtNewAuthorName = new JTextField();
             JTextField txtNewAuthorYear = new JTextField();
@@ -203,100 +193,44 @@ public class MainDashBoard {
 
             List<Category> dbCategoriesAdd = bookTool.getAllCategories();
             String[] categoryOptions = new String[dbCategoriesAdd.size()];
-            for (int i = 0; i < dbCategoriesAdd.size(); i++) {
-                categoryOptions[i] = dbCategoriesAdd.get(i).getName();
-            }
+            for (int i = 0; i < dbCategoriesAdd.size(); i++) categoryOptions[i] = dbCategoriesAdd.get(i).getName();
             JComboBox<String> cbCategoryAdd = new JComboBox<>(categoryOptions);
 
-            Object[] formFields = {
-                    "Book Title:", txtTitle,
-                    "Choose from the available authors:", cbAuthor,
-                    "OR Enter a New Author:", txtNewAuthorName,
-                    "Year of Birth (If creating a new one):", txtNewAuthorYear,
-                    "Category:", cbCategoryAdd,
-                    "Quantity:", txtQuantity
-            };
+            Object[] formFields = { "Book Title:", txtTitle, "Authors:", cbAuthor, "New Author Name:", txtNewAuthorName, "Birth Year:", txtNewAuthorYear, "Category:", cbCategoryAdd, "Quantity:", txtQuantity };
 
             while (true) {
-                int option = JOptionPane.showConfirmDialog(panel, formFields, "Add New Book", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
+                int option = JOptionPane.showConfirmDialog(panel, formFields, "Add Book", JOptionPane.OK_CANCEL_OPTION);
                 if (option == JOptionPane.OK_OPTION) {
-                    String title = txtTitle.getText().trim();
-                    String qtyStr = txtQuantity.getText().trim();
-                    boolean isCreatingNewAuthor = (cbAuthor.getSelectedIndex() == 0);
-
-                    if (title.isEmpty() || qtyStr.isEmpty()) {
-                        JOptionPane.showMessageDialog(panel, "Please fill in the Book Title and Quantity!");
-                        continue;
-                    }
-                    if (isCreatingNewAuthor && (txtNewAuthorName.getText().trim().isEmpty() || txtNewAuthorYear.getText().trim().isEmpty())) {
-                        JOptionPane.showMessageDialog(panel, "You have selected 'Create new author', please fill in your full name and year of birth!");
-                        continue;
-                    }
-
                     try {
-                        int qty = Integer.parseInt(qtyStr);
-                        int catIndex = cbCategoryAdd.getSelectedIndex();
-                        long categoryId = dbCategoriesAdd.get(catIndex).getCategoryId();
-                        String categoryName = dbCategoriesAdd.get(catIndex).getName();
+                        String title = txtTitle.getText().trim();
+                        int qty = Integer.parseInt(txtQuantity.getText().trim());
+                        if (qty <= 0) { JOptionPane.showMessageDialog(panel, "Quantity > 0!"); continue; }
 
-                        boolean success;
+                        long catId = dbCategoriesAdd.get(cbCategoryAdd.getSelectedIndex()).getCategoryId();
+                        String catName = dbCategoriesAdd.get(cbCategoryAdd.getSelectedIndex()).getName();
 
-                        if (isCreatingNewAuthor) {
-                            String authorName = txtNewAuthorName.getText().trim();
-                            int birthYear = Integer.parseInt(txtNewAuthorYear.getText().trim());
-
-                            int currentYear = SystemClock.now().getYear();
-                            if (birthYear < 1000 || birthYear > currentYear) {
-                                JOptionPane.showMessageDialog(panel,
-                                        " Invalid Year of Birth!\nPlease enter a valid 4-digit year (e.g., 1990) that does not exceed the current year (" + currentYear + ").",
-                                        "Invalid Input", JOptionPane.ERROR_MESSAGE);
-                                continue;
-                            }
-
-                            success = bookTool.addBookSmart(title, authorName, birthYear, categoryId, categoryName, qty);
+                        if (cbAuthor.getSelectedIndex() == 0) {
+                            String aName = txtNewAuthorName.getText().trim();
+                            int aYear = Integer.parseInt(txtNewAuthorYear.getText().trim());
+                            bookTool.addBookSmart(title, aName, aYear, catId, catName, qty);
                         } else {
-                            String selectedAuthor = (String) cbAuthor.getSelectedItem();
-                            long authorId = Long.parseLong(selectedAuthor.split(" - ")[0]);
-                            success = bookTool.addBookWithExistingAuthor(title, authorId, categoryId, categoryName, qty);
+                            long aId = Long.parseLong(((String)cbAuthor.getSelectedItem()).split(" - ")[0]);
+                            bookTool.addBookWithExistingAuthor(title, aId, catId, catName, qty);
                         }
-
-                        if (success) {
-                            JOptionPane.showMessageDialog(panel, "Book added successfully!");
-                            btnLoadBooksTab1.doClick();
-                            break;
-                        } else {
-                            JOptionPane.showMessageDialog(panel, "Database error! Cannot add book.", "Error", JOptionPane.ERROR_MESSAGE);
-                            continue;
-                        }
-                    } catch (NumberFormatException ex) {
-                        JOptionPane.showMessageDialog(panel, "The Quantity and Year of Birth must be valid integers!");
-                        continue;
-                    }
-                } else {
-                    break;
-                }
+                        btnLoadBooksTab1.doClick();
+                        break;
+                    } catch (Exception ex) { JOptionPane.showMessageDialog(panel, "Invalid input!"); }
+                } else break;
             }
         });
 
         btnDelete.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
-            if (selectedRow == -1) {
-                JOptionPane.showMessageDialog(panel, "Please select a book from the table first!");
-                return;
-            }
+            if (selectedRow == -1) return;
             long bookId = ((Number) table.getValueAt(selectedRow, 0)).longValue();
-            String bookName = (String) table.getValueAt(selectedRow, 2);
-
-            int confirm = JOptionPane.showConfirmDialog(panel, "Are you sure you want to delete:" + bookName + "?", "Confirm Deletion", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                boolean success = bookTool.deleteBook(bookId);
-                if (success) {
-                    JOptionPane.showMessageDialog(panel, "Deleted successfully!");
-                    btnLoadBooksTab1.doClick();
-                } else {
-                    JOptionPane.showMessageDialog(panel, "ERROR: Cannot delete! This book is currently borrowed.", "Delete Blocked", JOptionPane.ERROR_MESSAGE);
-                }
+            if (JOptionPane.showConfirmDialog(panel, "Delete?", "Confirm", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                if (bookTool.deleteBook(bookId)) btnLoadBooksTab1.doClick();
+                else JOptionPane.showMessageDialog(panel, "Cannot delete borrowed book!");
             }
         });
 
@@ -315,7 +249,6 @@ public class MainDashBoard {
         btnBorrow.setBounds(190, 20, 160, 35);
         panel.add(btnBorrow);
 
-        // BUTTON RENAMED AND EXPANDED TO INCLUDE RENEW FEATURE
         JButton btnReturn = new JButton("Return / Renew Book");
         btnReturn.setBounds(360, 20, 190, 35);
         panel.add(btnReturn);
@@ -343,47 +276,163 @@ public class MainDashBoard {
         panel.add(scrollPane);
 
         btnTimeTravel.addActionListener(e -> {
-            String input = JOptionPane.showInputDialog(panel, "Enter number of days to skip forward (e.g., 5):", "Time Travel Debug", JOptionPane.WARNING_MESSAGE);
-            if (input != null && !input.trim().isEmpty()) {
-                try {
-                    int days = Integer.parseInt(input.trim());
-                    SystemClock.addDays(days);
-                    lblDate.setText("System Date: " + SystemClock.now());
-                    JOptionPane.showMessageDialog(panel, "Time skipped! Current date is now: " + SystemClock.now());
-                    btnLoad.doClick();
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(panel, "Please enter a valid number!");
-                }
-            }
+            try {
+                int days = Integer.parseInt(JOptionPane.showInputDialog("Days to skip:"));
+                SystemClock.addDays(days);
+                lblDate.setText("System Date: " + SystemClock.now());
+                btnLoad.doClick();
+            } catch (Exception ex) {}
         });
 
         btnResetTime.addActionListener(e -> {
             SystemClock.reset();
             lblDate.setText("System Date: " + SystemClock.now());
-            JOptionPane.showMessageDialog(panel, "Time has been reset to the real world date!");
             btnLoad.doClick();
         });
 
         btnLoad.addActionListener(e -> {
-            displayArea.setText("===BORROWED BOOKS & FINES LIST===\n\n");
-            displayArea.append(transactionTool.getBorrowerListForUI());
+            displayArea.setText("===BORROWED BOOKS & FINES LIST===\n\n" + transactionTool.getBorrowerListForUI());
         });
 
         btnBorrow.addActionListener(e -> {
-            BorrowPopup popup = new BorrowPopup((JFrame) SwingUtilities.getWindowAncestor(panel));
-            popup.setVisible(true);
+            new BorrowPopup((JFrame) SwingUtilities.getWindowAncestor(panel)).setVisible(true);
             btnLoad.doClick();
-            if (btnLoadBooksTab1 != null) btnLoadBooksTab1.doClick();
         });
 
         btnReturn.addActionListener(e -> {
-            // When clicked, ReturnPopup appears containing both Return and Renew functionalities
-            ReturnPopup popup = new ReturnPopup((JFrame) SwingUtilities.getWindowAncestor(panel));
-            popup.setVisible(true);
+            new ReturnPopup((JFrame) SwingUtilities.getWindowAncestor(panel)).setVisible(true);
             btnLoad.doClick();
-            if (btnLoadBooksTab1 != null) btnLoadBooksTab1.doClick();
         });
 
+        return panel;
+    }
+
+    // ==========================================
+    // USER MANAGEMENT TAB (BORROWERS)
+    // ==========================================
+    private JPanel createBorrowerPanel() {
+        JPanel panel = new JPanel(null);
+
+        JButton btnLoad = new JButton("Load Users");
+        btnLoad.setBounds(20, 10, 130, 35);
+        panel.add(btnLoad);
+
+        JLabel lblSearch = new JLabel("Search (ID, Name, Phone, Email):");
+        lblSearch.setBounds(170, 10, 260, 35);
+        lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
+        panel.add(lblSearch);
+
+        JTextField txtSearch = new JTextField();
+        txtSearch.setBounds(440, 10, 300, 35);
+        panel.add(txtSearch);
+
+        JButton btnSearch = new JButton("Search");
+        btnSearch.setBounds(750, 10, 100, 35);
+        panel.add(btnSearch);
+
+        JButton btnAdd = new JButton("Add User");
+        btnAdd.setBounds(20, 55, 130, 35);
+        panel.add(btnAdd);
+
+        JButton btnDelete = new JButton("Delete User");
+        btnDelete.setBounds(160, 55, 130, 35);
+        panel.add(btnDelete);
+
+        String[] cols = {"DB_ID", "User ID (Code)", "Full Name", "Email Address", "Phone Number"};
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(model);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        table.setRowHeight(30);
+
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(2).setPreferredWidth(250);
+        table.getColumnModel().getColumn(3).setPreferredWidth(250);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBounds(20, 100, 1140, 560);
+        panel.add(scrollPane);
+
+        Runnable loadData = () -> {
+            model.setRowCount(0);
+            List<Object[]> users = borrowerTool.searchBorrowers(txtSearch.getText().trim());
+            for (Object[] row : users) model.addRow(row);
+        };
+
+        btnLoad.addActionListener(e -> { txtSearch.setText(""); loadData.run(); });
+        btnSearch.addActionListener(e -> loadData.run());
+        txtSearch.addActionListener(e -> loadData.run());
+
+        btnAdd.addActionListener(e -> {
+            JTextField txtName = new JTextField();
+            JTextField txtEmail = new JTextField();
+            JTextField txtPhone = new JTextField();
+
+            Object[] form = { "Full Name:", txtName, "Email (@gmail.com):", txtEmail, "Phone Number (7-8 digits):", txtPhone };
+
+            while (true) {
+                int opt = JOptionPane.showConfirmDialog(panel, form, "Register New Borrower", JOptionPane.OK_CANCEL_OPTION);
+                if (opt == JOptionPane.OK_OPTION) {
+                    String name = txtName.getText().trim();
+                    String email = txtEmail.getText().trim();
+                    String phone = txtPhone.getText().trim();
+
+                    if (name.isEmpty() || phone.isEmpty() || email.isEmpty()) {
+                        JOptionPane.showMessageDialog(panel, "All fields are required!");
+                        continue;
+                    }
+
+                    // BLOCK IF PHONE NUMBER IS INVALID
+                    if (!borrowerTool.isValidPhoneNumber(phone)) {
+                        JOptionPane.showMessageDialog(panel, "Invalid Phone Number!\nMust contain exactly 7 or 8 digits (No letters/symbols).", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        continue;
+                    }
+
+                    // BLOCK IF EMAIL IS NOT @GMAIL.COM
+                    if (!borrowerTool.isValidEmail(email)) {
+                        JOptionPane.showMessageDialog(panel, "Invalid Email!\nThe email must end with '@gmail.com' (e.g., john@gmail.com).", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        continue;
+                    }
+
+                    if (borrowerTool.addBorrower(name, email, phone)) {
+                        JOptionPane.showMessageDialog(panel, "User registered successfully!");
+                        loadData.run();
+                        break;
+                    } else {
+                        JOptionPane.showMessageDialog(panel, "Database error!");
+                        break;
+                    }
+                } else break;
+            }
+        });
+
+        btnDelete.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(panel, "Select a user first!"); return;
+            }
+            long id = ((Number) table.getValueAt(row, 0)).longValue();
+            String name = (String) table.getValueAt(row, 2);
+
+            int confirm = JOptionPane.showConfirmDialog(panel, "Are you sure you want to delete user: " + name + "?\nAll their return history will be erased.", "Delete User", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (borrowerTool.deleteBorrower(id)) {
+                    JOptionPane.showMessageDialog(panel, "User deleted successfully!");
+                    loadData.run();
+                } else {
+                    JOptionPane.showMessageDialog(panel, "Cannot delete!\nThis user is currently borrowing books. They must return all books first.", "Delete Blocked", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        SwingUtilities.invokeLater(loadData);
         return panel;
     }
 }

@@ -11,13 +11,14 @@ public class ReturnPopup extends JDialog {
     private final TransactionDAO transactionDAO = new TransactionDAO();
 
     public ReturnPopup(JFrame parentFrame) {
-        // CHANGED TITLE TO REFLECT DUAL FUNCTIONALITY
         super(parentFrame, "Manage Loans - Return & Renew", true);
         setSize(1000, 550);
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
+        // ==========================================
         // SEARCH AREA
+        // ==========================================
         JLabel lblSearch = new JLabel("Search Borrower:");
         lblSearch.setBounds(20, 10, 150, 30);
         lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
@@ -31,9 +32,16 @@ public class ReturnPopup extends JDialog {
         btnSearch.setBounds(430, 10, 100, 30);
         add(btnSearch);
 
-        // TABLE COLUMNS (Includes Status and Fine)
+        // ==========================================
+        // TABLE COLUMNS CONFIGURATION
+        // ==========================================
         String[] cols = {"User ID", "Borrower Name", "Phone", "Book ID", "Book Title", "Borrow Date", "Due Date", "Status", "Fine (VND)"};
-        DefaultTableModel model = new DefaultTableModel(cols, 0);
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Prevent cells from being edited by double-clicking
+            }
+        };
         JTable table = new JTable(model);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -55,7 +63,9 @@ public class ReturnPopup extends JDialog {
         scrollPane.setBounds(20, 50, 940, 380);
         add(scrollPane);
 
+        // ==========================================
         // DYNAMIC DATA LOADER
+        // ==========================================
         Runnable loadData = () -> {
             model.setRowCount(0);
             String keyword = txtSearch.getText().trim();
@@ -73,13 +83,13 @@ public class ReturnPopup extends JDialog {
         btnSearch.addActionListener(e -> loadData.run());
         txtSearch.addActionListener(e -> loadData.run()); // Type and press Enter
 
-
-        // BUTTON 1: CONFIRM RETURN (Green)
-
+        // ==========================================
+        // BUTTON 1: CONFIRM RETURN
+        // ==========================================
         JButton btnConfirmReturn = new JButton("CONFIRM RETURN");
         btnConfirmReturn.setBounds(230, 440, 250, 50);
         btnConfirmReturn.setFont(new Font("SansSerif", Font.BOLD, 16));
-        btnConfirmReturn.setBackground(new Color(46, 204, 113)); // Friendly Emerald Green
+        btnConfirmReturn.setBackground(new Color(46, 204, 113)); // Emerald Green
         btnConfirmReturn.setForeground(Color.WHITE);
         add(btnConfirmReturn);
 
@@ -101,7 +111,7 @@ public class ReturnPopup extends JDialog {
             // Display a warning popup about potential fines
             String message = "Are you sure you want to process return for:\nUser: " + borrowerName + "\nBook: " + bookTitle;
             if (fine > 0) {
-                message += "\n\n⚠ATTENTION: This book is " + status + "!\nFINE TO COLLECT: " + fine + " VND";
+                message += "\n\nATTENTION: This book is " + status + "!\nFINE TO COLLECT: " + fine + " VND";
             }
 
             int confirm = JOptionPane.showConfirmDialog(this, message, "Confirm Return", JOptionPane.YES_NO_OPTION);
@@ -117,12 +127,13 @@ public class ReturnPopup extends JDialog {
             }
         });
 
-        // BUTTON 2: RENEW (+7 DAYS) (Blue)
-
+        // ==========================================
+        // BUTTON 2: RENEW (+7 DAYS)
+        // ==========================================
         JButton btnRenew = new JButton("RENEW (+7 DAYS)");
         btnRenew.setBounds(520, 440, 250, 50);
         btnRenew.setFont(new Font("SansSerif", Font.BOLD, 16));
-        btnRenew.setBackground(new Color(52, 152, 219)); // Professional Peter River Blue
+        btnRenew.setBackground(new Color(52, 152, 219)); // Peter River Blue
         btnRenew.setForeground(Color.WHITE);
         add(btnRenew);
 

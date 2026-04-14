@@ -49,39 +49,74 @@ public class BookDAO {
         return list;
     }
 
+    // =========================================================
     // BASIC OMNI-SEARCH (Reused by BorrowPopup)
+    // =========================================================
     public List<Book> searchOmni(String keyword) {
-        // Reuse the overloaded method below with categoryId = 0 (No category filtering)
-        return searchOmni(keyword, 0);
+        // Reuse the overloaded method below with default "All Fields" and no category filter
+        return searchOmni(keyword, "All Fields", 0);
     }
 
-    // ADVANCED OMNI-SEARCH + FILTER (Combines Keyword Search & Category Filtering)
-    public List<Book> searchOmni(String keyword, long categoryId) {
+    // =========================================================
+    // ADVANCED DYNAMIC SEARCH (Combines Keyword, Search Type & Category Filtering)
+    // =========================================================
+    public List<Book> searchOmni(String keyword, String searchType, long categoryId) {
         List<Book> list = new ArrayList<>();
-        // Dynamic SQL query with conditional category filtering
-        String sql = "SELECT b.*, a.name AS author_name, c.name AS category_name " +
-                "FROM books b " +
-                "LEFT JOIN authors a ON b.author_id = a.author_id " +
-                "LEFT JOIN categories c ON b.category_id = c.category_id " +
-                "WHERE (b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?) ";
 
-        // If categoryId > 0, append the category filter condition
+        // DYNAMIC SQL TECHNIQUE: Start with '1=1' to easily append subsequent AND conditions
+        StringBuilder sql = new StringBuilder(
+                "SELECT b.*, a.name AS author_name, c.name AS category_name " +
+                        "FROM books b " +
+                        "LEFT JOIN authors a ON b.author_id = a.author_id " +
+                        "LEFT JOIN categories c ON b.category_id = c.category_id " +
+                        "WHERE 1=1 "
+        );
+
+        // 1. Append Category filter condition if applicable
         if (categoryId > 0) {
-            sql += " AND b.category_id = ?";
+            sql.append(" AND b.category_id = ? ");
+        }
+
+        // 2. Append Keyword Search condition based on the selected Search Type dropdown
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        if (hasKeyword) {
+            sql.append(" AND (");
+            if ("Title".equals(searchType)) {
+                sql.append("b.title LIKE ?");
+            } else if ("Author".equals(searchType)) {
+                sql.append("a.name LIKE ?");
+            } else if ("ID (Book/Author)".equals(searchType)) {
+                sql.append("b.book_code LIKE ? OR a.author_code LIKE ?");
+            } else { // Fallback to "All Fields"
+                sql.append("b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?");
+            }
+            sql.append(") ");
         }
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-            String searchPattern = "%" + keyword + "%";
-            ps.setString(1, searchPattern);
-            ps.setString(2, searchPattern);
-            ps.setString(3, searchPattern);
-            ps.setString(4, searchPattern);
+            int paramIndex = 1; // Parameter index counter for dynamic binding
 
-            // Bind the category ID parameter if category filtering is applied
+            // Bind Category ID parameter
             if (categoryId > 0) {
-                ps.setLong(5, categoryId);
+                ps.setLong(paramIndex++, categoryId);
+            }
+
+            // Bind Keyword parameter(s) dynamically
+            if (hasKeyword) {
+                String searchPattern = "%" + keyword + "%";
+                if ("Title".equals(searchType) || "Author".equals(searchType)) {
+                    ps.setString(paramIndex++, searchPattern);
+                } else if ("ID (Book/Author)".equals(searchType)) {
+                    ps.setString(paramIndex++, searchPattern);
+                    ps.setString(paramIndex++, searchPattern);
+                } else { // "All Fields" requires 4 parameter bindings
+                    ps.setString(paramIndex++, searchPattern);
+                    ps.setString(paramIndex++, searchPattern);
+                    ps.setString(paramIndex++, searchPattern);
+                    ps.setString(paramIndex++, searchPattern);
+                }
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -104,8 +139,9 @@ public class BookDAO {
         return list;
     }
 
+    // =========================================================
     // AUTHOR CODE GENERATION ALGORITHM (STANDARDIZED 3-CHARACTER PREFIX)
-
+    // =========================================================
     private String generateAuthorCode(String name, int birthYear) {
         // Split the author's name into individual words based on whitespace
         String[] words = name.trim().split("\\s+");
@@ -235,7 +271,6 @@ public class BookDAO {
     }
 
     // RETRIEVE AUTHOR LIST FOR UI COMBOBOX POPULATION
-
     public List<String> getAllAuthorsForUI() {
         List<String> list = new ArrayList<>();
         String sql = "SELECT author_id, name, birth_year FROM authors";
@@ -251,7 +286,6 @@ public class BookDAO {
     }
 
     // ADD BOOK USING AN EXISTING AUTHOR ID (Bypasses author creation)
-
     public boolean addBookWithExistingAuthor(String title, long authorId, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);

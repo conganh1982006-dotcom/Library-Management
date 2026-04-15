@@ -19,7 +19,7 @@ public class AuthorDAO {
 
             while (rs.next()) {
                 Author author = new Author();
-                author.setAuthorId(rs.getLong("author_id")); // Đã khớp chuẩn Database
+                author.setAuthorId(rs.getLong("author_id"));
                 author.setName(rs.getString("name"));
                 list.add(author);
             }
@@ -38,7 +38,7 @@ public class AuthorDAO {
 
             ps.setString(1, author.getName());
             ps.executeUpdate();
-            System.out.println("✅ Thêm tác giả thành công!");
+            System.out.println(" Successfully added another author!");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -53,7 +53,7 @@ public class AuthorDAO {
 
             ps.setLong(1, id);
             ps.executeUpdate();
-            System.out.println("✅ Xóa thành công tác giả ID: " + id);
+            System.out.println(" Author ID successfully removed: " + id);
         } catch (SQLException e) {
             e.printStackTrace();
         }

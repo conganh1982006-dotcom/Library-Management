@@ -5,8 +5,8 @@ public class User {
     private String username;
     private String password;
     private String fullName;
-    private String email; // bổ sung email cho khớp DB
-    private String role; // ADMIN hoặc STAFF
+    private String email;
+    private String role; // ADMIN or STAFF
 
     public User() {}
 

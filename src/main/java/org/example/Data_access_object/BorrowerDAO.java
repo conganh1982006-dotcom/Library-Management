@@ -118,7 +118,9 @@ public class BorrowerDAO {
                     });
                 }
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -172,10 +174,11 @@ public class BorrowerDAO {
         return list;
     }
 
+    // UPDATED: Added borrower_code to support the Stealth ID feature in BorrowPopup
     public List<Object[]> searchBorrower(String keyword) {
         List<Object[]> list = new ArrayList<>();
 
-        String sql = "SELECT b.borrower_id, b.name, b.phone_number, " +
+        String sql = "SELECT b.borrower_id, b.borrower_code, b.name, b.phone_number, " +
                 "(SELECT COUNT(*) FROM transactions t WHERE t.borrower_id = b.borrower_id AND t.status = 'BORROWED') AS borrowing_count " +
                 "FROM borrowers b WHERE b.name LIKE ?";
 
@@ -193,6 +196,7 @@ public class BorrowerDAO {
 
                 list.add(new Object[]{
                         rs.getLong("borrower_id"),
+                        rs.getString("borrower_code"),
                         rs.getString("name"),
                         phoneStr,
                         rs.getInt("borrowing_count")

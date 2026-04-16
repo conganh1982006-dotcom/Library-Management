@@ -4,7 +4,7 @@ import org.example.Data_access_object.BookDAO;
 import org.example.Data_access_object.BorrowerDAO;
 import org.example.Data_access_object.TransactionDAO;
 import org.example.models.Book;
-import org.example.models.Borrower; // Nhớ import khuôn Borrower mới
+import org.example.models.Borrower;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -22,7 +22,9 @@ public class BorrowPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
+        // ==========================================
         // PART 1: SELECT / ADD BORROWER
+        // ==========================================
 
         JLabel lblUser = new JLabel("BORROWER (Search by Name or Add New):");
         lblUser.setBounds(20, 10, 400, 25);
@@ -40,16 +42,28 @@ public class BorrowPopup extends JDialog {
         btnAddUser.setBounds(390, 40, 150, 30);
         add(btnAddUser);
 
-        String[] userCols = {"User ID", "Name", "Phone", "Currently Borrowing"};
-        DefaultTableModel userModel = new DefaultTableModel(userCols, 0);
+        // UPDATED: Added DB_ID (Hidden) and User Code
+        String[] userCols = {"DB_ID", "User Code", "Name", "Phone", "Currently Borrowing"};
+        DefaultTableModel userModel = new DefaultTableModel(userCols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Prevent cells from being edited by double-clicking
+            }
+        };
         JTable tblUser = new JTable(userModel);
         tblUser.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        // STEALTH ID: Hide the database ID column from the UI
+        tblUser.getColumnModel().getColumn(0).setMinWidth(0);
+        tblUser.getColumnModel().getColumn(0).setMaxWidth(0);
+
         JScrollPane scrollUser = new JScrollPane(tblUser);
         scrollUser.setBounds(20, 80, 790, 150);
         add(scrollUser);
 
         btnSearchUser.addActionListener(e -> {
             userModel.setRowCount(0);
+            // Uses the upgraded searchBorrower that returns the borrower_code
             List<Object[]> users = borrowerDAO.searchBorrower(txtSearchUser.getText());
             for (Object[] u : users) {
                 userModel.addRow(u);
@@ -77,7 +91,6 @@ public class BorrowPopup extends JDialog {
                 if (newName.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "Name cannot be empty!");
                 } else {
-                    // FIX 1: Đóng gói vào Model Borrower trước khi truyền cho DAO
                     Borrower newBorrower = new Borrower(0, newName, newEmail, newPhone);
                     borrowerDAO.addBorrower(newBorrower);
 
@@ -89,7 +102,9 @@ public class BorrowPopup extends JDialog {
             }
         });
 
+        // ==========================================
         // PART 2: SELECT BOOK
+        // ==========================================
 
         JLabel lblBook = new JLabel("BOOK INVENTORY (Search by Title or Load All):");
         lblBook.setBounds(20, 250, 400, 25);
@@ -107,10 +122,21 @@ public class BorrowPopup extends JDialog {
         btnLoadBooks.setBounds(390, 280, 150, 30);
         add(btnLoadBooks);
 
-        String[] bookCols = {"Book ID", "Title", "Available Qty"};
-        DefaultTableModel bookModel = new DefaultTableModel(bookCols, 0);
+        // UPDATED: Added DB_ID (Hidden) and Book Code
+        String[] bookCols = {"DB_ID", "Book Code", "Title", "Available Qty"};
+        DefaultTableModel bookModel = new DefaultTableModel(bookCols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Prevent cells from being edited by double-clicking
+            }
+        };
         JTable tblBook = new JTable(bookModel);
         tblBook.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        // STEALTH ID: Hide the database ID column from the UI
+        tblBook.getColumnModel().getColumn(0).setMinWidth(0);
+        tblBook.getColumnModel().getColumn(0).setMaxWidth(0);
+
         JScrollPane scrollBook = new JScrollPane(tblBook);
         scrollBook.setBounds(20, 320, 790, 150);
         add(scrollBook);
@@ -119,24 +145,22 @@ public class BorrowPopup extends JDialog {
             bookModel.setRowCount(0);
             List<Book> books = bookDAO.getAllBooks();
             for (Book b : books) {
-                // FIX 2: Gọi đúng hàm getBookId()
-                bookModel.addRow(new Object[]{b.getBookId(), b.getTitle(), b.getAvailableQuantity()});
+                bookModel.addRow(new Object[]{b.getBookId(), b.getBookCode(), b.getTitle(), b.getAvailableQuantity()});
             }
         });
 
         btnSearchBook.addActionListener(e -> {
             bookModel.setRowCount(0);
             String keyword = txtSearchBook.getText();
-
-            // ĐÃ FIX: Đổi từ searchBooksByTitle sang searchOmni cho đồng bộ với BookDAO mới
             List<Book> books = bookDAO.searchOmni(keyword);
-
             for (Book b : books) {
-                bookModel.addRow(new Object[]{b.getBookId(), b.getTitle(), b.getAvailableQuantity()});
+                bookModel.addRow(new Object[]{b.getBookId(), b.getBookCode(), b.getTitle(), b.getAvailableQuantity()});
             }
         });
 
+        // ==========================================
         // PART 3: CONFIRM BORROW
+        // ==========================================
 
         JButton btnConfirm = new JButton("CONFIRM BORROW");
         btnConfirm.setBounds(270, 500, 300, 50);
@@ -154,14 +178,16 @@ public class BorrowPopup extends JDialog {
                 return;
             }
 
-            // FIX 4: Cast safely to long/int to avoid ClassCastException
+            // RETRIEVE DATA FROM ADJUSTED COLUMNS
+            // Column 0: DB_ID (Hidden) | Column 1: Code | Column 2: Name | Column 4: Borrowing Count
             long userId = ((Number) tblUser.getValueAt(userRow, 0)).longValue();
-            String userName = (String) tblUser.getValueAt(userRow, 1);
-            int currentlyBorrowing = ((Number) tblUser.getValueAt(userRow, 3)).intValue();
+            String userName = (String) tblUser.getValueAt(userRow, 2);
+            int currentlyBorrowing = ((Number) tblUser.getValueAt(userRow, 4)).intValue();
 
+            // Column 0: DB_ID (Hidden) | Column 1: Code | Column 2: Title | Column 3: Qty
             long bookId = ((Number) tblBook.getValueAt(bookRow, 0)).longValue();
-            String bookName = (String) tblBook.getValueAt(bookRow, 1);
-            int availableQty = ((Number) tblBook.getValueAt(bookRow, 2)).intValue();
+            String bookName = (String) tblBook.getValueAt(bookRow, 2);
+            int availableQty = ((Number) tblBook.getValueAt(bookRow, 3)).intValue();
 
             if (availableQty <= 0) {
                 JOptionPane.showMessageDialog(this, "This book is currently out of stock!");
@@ -175,14 +201,14 @@ public class BorrowPopup extends JDialog {
                 if (confirm != JOptionPane.YES_OPTION) return;
             }
 
-            // Calling a book borrowing function with Transaction Control
+            // Calling the book borrowing function with Transaction Control
             transactionDAO.borrowBook(userId, bookId);
             JOptionPane.showMessageDialog(this, "Borrow Ticket Created for: " + userName + "\nBook: " + bookName);
 
             this.dispose();
         });
 
-        //Automatically load the latest data when the popup is opened
+        // Automatically load the latest data when the popup is opened
         SwingUtilities.invokeLater(() -> {
             btnSearchUser.doClick();
             btnLoadBooks.doClick();

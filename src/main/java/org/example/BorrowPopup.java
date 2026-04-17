@@ -22,9 +22,7 @@ public class BorrowPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
-        // ==========================================
         // PART 1: SELECT / ADD BORROWER
-        // ==========================================
 
         JLabel lblUser = new JLabel("BORROWER (Search by Name or Add New):");
         lblUser.setBounds(20, 10, 400, 25);
@@ -102,9 +100,7 @@ public class BorrowPopup extends JDialog {
             }
         });
 
-        // ==========================================
         // PART 2: SELECT BOOK
-        // ==========================================
 
         JLabel lblBook = new JLabel("BOOK INVENTORY (Search by Title or Load All):");
         lblBook.setBounds(20, 250, 400, 25);
@@ -158,9 +154,7 @@ public class BorrowPopup extends JDialog {
             }
         });
 
-        // ==========================================
         // PART 3: CONFIRM BORROW
-        // ==========================================
 
         JButton btnConfirm = new JButton("CONFIRM BORROW");
         btnConfirm.setBounds(270, 500, 300, 50);

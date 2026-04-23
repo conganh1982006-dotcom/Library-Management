@@ -274,13 +274,15 @@ public class BookDAO {
         }
     }
 
-    public boolean updateBookQuantity(long bookId, int amountChange) {
-        String sql = "UPDATE books SET total_quantity = total_quantity + ?, available_quantity = available_quantity + ? WHERE book_id = ?";
+    // Upgraded: Updates both Book Title and Quantity simultaneously
+    public boolean updateBookInfo(long bookId, String newTitle, int amountChange) {
+        String sql = "UPDATE books SET title = ?, total_quantity = total_quantity + ?, available_quantity = available_quantity + ? WHERE book_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, amountChange);
+            ps.setString(1, newTitle); // Set the new title
             ps.setInt(2, amountChange);
-            ps.setLong(3, bookId);
+            ps.setInt(3, amountChange);
+            ps.setLong(4, bookId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

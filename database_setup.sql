@@ -1,22 +1,12 @@
--- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
--- Database: library_management
--- ------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS library_management;
-USE library_management;
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+-- ====================================================================
+-- LIBRARY MANAGEMENT SYSTEM - OFFICIAL DATA SETUP
+-- ====================================================================
 
--- ------------------------------------------------------
--- Table structure & data for `accounts` & `users`
--- ------------------------------------------------------
+DROP DATABASE IF EXISTS `library_management`;
+CREATE DATABASE `library_management`;
+USE `library_management`;
+
+-- 1. Table structure for `accounts`
 DROP TABLE IF EXISTS `accounts`;
 CREATE TABLE `accounts` (
                             `account_id` int NOT NULL AUTO_INCREMENT,
@@ -29,6 +19,7 @@ CREATE TABLE `accounts` (
 
 INSERT INTO `accounts` VALUES (1,'admin','123456','ADMIN'), (2,'staff01','123456','STAFF');
 
+-- 2. Table structure for `users` (System Staff)
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
                          `user_id` int NOT NULL AUTO_INCREMENT,
@@ -41,11 +32,11 @@ CREATE TABLE `users` (
                          UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT INTO `users` VALUES (1,'admin','123456','Admin','admin@library.com','ADMIN'),(2,'staff01','123456','Library Staff 01','staff01@library.com','STAFF');
+INSERT INTO `users` VALUES
+                        (1,'admin','123456','Super Admin','admin@library.com','ADMIN'),
+                        (2,'staff01','123456','Library Staff 01','staff01@library.com','STAFF');
 
--- ------------------------------------------------------
--- Table structure & data for `categories`
--- ------------------------------------------------------
+-- 3. Table structure for `categories`
 DROP TABLE IF EXISTS `categories`;
 CREATE TABLE `categories` (
                               `category_id` bigint NOT NULL AUTO_INCREMENT,
@@ -55,9 +46,7 @@ CREATE TABLE `categories` (
 
 INSERT INTO `categories` VALUES (1,'Theoretical Physics'),(2,'Applied Mathematics'),(3,'Computer Science'),(4,'Astrophysics');
 
--- ------------------------------------------------------
--- Table structure & data for `authors`
--- ------------------------------------------------------
+-- 4. Table structure for `authors`
 DROP TABLE IF EXISTS `authors`;
 CREATE TABLE `authors` (
                            `author_id` bigint NOT NULL AUTO_INCREMENT,
@@ -67,15 +56,14 @@ CREATE TABLE `authors` (
                            PRIMARY KEY (`author_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Standardized Author Codes matching Java generateAuthorCode logic
 INSERT INTO `authors` VALUES
-                          (1,'Albert Einstein','AE01879',1879),
-                          (2,'Stephen Hawking','SH01942',1942),
-                          (3,'Isaac Newton','IN01643',1643),
-                          (4,'Alan Turing','AT01912',1912);
+                          (1,'Albert Einstein','EIN1879',1879),
+                          (2,'Stephen Hawking','HAW1942',1942),
+                          (3,'Isaac Newton','NEW1643',1643),
+                          (4,'Alan Turing','TUR1912',1912);
 
--- ------------------------------------------------------
--- Table structure & data for `books`
--- ------------------------------------------------------
+-- 5. Table structure for `books`
 DROP TABLE IF EXISTS `books`;
 CREATE TABLE `books` (
                          `book_id` bigint NOT NULL AUTO_INCREMENT,
@@ -84,7 +72,7 @@ CREATE TABLE `books` (
                          `category_id` bigint DEFAULT NULL,
                          `total_quantity` int DEFAULT '0',
                          `available_quantity` int DEFAULT '0',
-                         `book_code` varchar(10) DEFAULT NULL,
+                         `book_code` varchar(20) DEFAULT NULL,
                          PRIMARY KEY (`book_id`),
                          KEY `author_id` (`author_id`),
                          KEY `category_id` (`category_id`),
@@ -92,15 +80,15 @@ CREATE TABLE `books` (
                          CONSTRAINT `books_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Standardized Book Codes using the 3-letter prefix logic (THE, AST, APP, COM)
 INSERT INTO `books` VALUES
-                        (1,'The Theory of Relativity',1,1,20,20,'P0001'),
-                        (2,'A Brief History of Time',2,4,15,15,'P0002'),
-                        (3,'Philosophy Naturals and Principal Mathematica',3,2,5,5,'M0001'),
-                        (4,'Computing Machine and Intelligence',4,3,30,30,'C0001');
+                        (1,'The Theory of Relativity',1,1,20,20,'THE0001'),
+                        (2,'A Brief History of Time',2,4,15,15,'AST0001'),
+                        (3,'Philosophiae Naturalis Principia Mathematica',3,2,5,5,'APP0001'),
+                        (4,'Computing Machinery and Intelligence',4,3,30,30,'COM0001'),
+                        (5,'Black Holes and Baby Universes',2,4,10,10,'AST0002');
 
--- ------------------------------------------------------
--- Table structure & data for `borrowers`
--- ------------------------------------------------------
+-- 6. Table structure for `borrowers`
 DROP TABLE IF EXISTS `borrowers`;
 CREATE TABLE `borrowers` (
                              `borrower_id` bigint NOT NULL AUTO_INCREMENT,
@@ -113,12 +101,10 @@ CREATE TABLE `borrowers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `borrowers` VALUES
-                            (1,'NVA0123','Nguyen Van A','nguyenvana@gmail.com','0912345123'),
-                            (2,'TTB0987','Tran Thi B','tranthib@gmail.com','0987654987');
+                            (1,'PCA1234','Pham Cong Anh','conganh@gmail.com','09151234'),
+                            (2,'NYG5678','Nguyen Y','nguyen.y@gmail.com','08735678');
 
--- ------------------------------------------------------
--- Table structure for `transactions` (Empty for fresh start)
--- ------------------------------------------------------
+-- 7. Table structure for `transactions`
 DROP TABLE IF EXISTS `transactions`;
 CREATE TABLE `transactions` (
                                 `tns_id` bigint NOT NULL AUTO_INCREMENT,
@@ -134,13 +120,3 @@ CREATE TABLE `transactions` (
                                 CONSTRAINT `transactions_ibfk_1` FOREIGN KEY (`book_id`) REFERENCES `books` (`book_id`) ON DELETE CASCADE,
                                 CONSTRAINT `transactions_ibfk_2` FOREIGN KEY (`borrower_id`) REFERENCES `borrowers` (`borrower_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
--- Clean Dump Completed

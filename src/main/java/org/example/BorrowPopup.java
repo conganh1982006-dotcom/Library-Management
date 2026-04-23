@@ -4,7 +4,7 @@ import org.example.Data_access_object.BookDAO;
 import org.example.Data_access_object.BorrowerDAO;
 import org.example.Data_access_object.TransactionDAO;
 import org.example.models.Book;
-import org.example.models.Borrower;
+import org.example.models.Borrower; // Keep this import if Borrower objects are used elsewhere, though not directly in addBorrower anymore
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -12,9 +12,9 @@ import java.awt.*;
 import java.util.List;
 
 public class BorrowPopup extends JDialog {
-    private BorrowerDAO borrowerDAO = new BorrowerDAO();
-    private BookDAO bookDAO = new BookDAO();
-    private TransactionDAO transactionDAO = new TransactionDAO();
+    private final BorrowerDAO borrowerDAO = new BorrowerDAO();
+    private final BookDAO bookDAO = new BookDAO();
+    private final TransactionDAO transactionDAO = new TransactionDAO();
 
     public BorrowPopup(JFrame parentFrame) {
         super(parentFrame, "Create Borrow Ticket", true);
@@ -61,8 +61,8 @@ public class BorrowPopup extends JDialog {
 
         btnSearchUser.addActionListener(e -> {
             userModel.setRowCount(0);
-            // Uses the upgraded searchBorrower that returns the borrower_code
-            List<Object[]> users = borrowerDAO.searchBorrower(txtSearchUser.getText());
+            // Uses the upgraded searchBorrowerForUI that returns the borrower_code
+            List<Object[]> users = borrowerDAO.searchBorrowerForUI(txtSearchUser.getText());
             for (Object[] u : users) {
                 userModel.addRow(u);
             }
@@ -89,13 +89,14 @@ public class BorrowPopup extends JDialog {
                 if (newName.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "Name cannot be empty!");
                 } else {
-                    Borrower newBorrower = new Borrower(0, newName, newEmail, newPhone);
-                    borrowerDAO.addBorrower(newBorrower);
-
-                    JOptionPane.showMessageDialog(this, "User registered successfully for: " + newName);
-
-                    txtSearchUser.setText(newName);
-                    btnSearchUser.doClick();
+                    // Call the updated addBorrower method
+                    if (borrowerDAO.addBorrower(newName, newEmail, newPhone)) {
+                        JOptionPane.showMessageDialog(this, "User registered successfully for: " + newName);
+                        txtSearchUser.setText(newName);
+                        btnSearchUser.doClick();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Error registering user. Please check logs.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         });
@@ -173,12 +174,12 @@ public class BorrowPopup extends JDialog {
             }
 
             // RETRIEVE DATA FROM ADJUSTED COLUMNS
-            // Column 0: DB_ID (Hidden) | Column 1: Code | Column 2: Name | Column 4: Borrowing Count
+            // userCols = {"DB_ID", "User Code", "Name", "Phone", "Currently Borrowing"};
             long userId = ((Number) tblUser.getValueAt(userRow, 0)).longValue();
             String userName = (String) tblUser.getValueAt(userRow, 2);
             int currentlyBorrowing = ((Number) tblUser.getValueAt(userRow, 4)).intValue();
 
-            // Column 0: DB_ID (Hidden) | Column 1: Code | Column 2: Title | Column 3: Qty
+            // bookCols = {"DB_ID", "Book Code", "Title", "Available Qty"};
             long bookId = ((Number) tblBook.getValueAt(bookRow, 0)).longValue();
             String bookName = (String) tblBook.getValueAt(bookRow, 2);
             int availableQty = ((Number) tblBook.getValueAt(bookRow, 3)).intValue();

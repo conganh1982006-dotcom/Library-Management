@@ -31,7 +31,6 @@ public class MainDashBoard {
         tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 14));
         tabbedPane.addTab("  Book Inventory  ", createBookPanel());
         tabbedPane.addTab("  Borrow & Return  ", createTransactionPanel());
-
         tabbedPane.addTab("  User Management  ", createBorrowerPanel());
 
         frame.add(tabbedPane);
@@ -64,7 +63,7 @@ public class MainDashBoard {
         lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
         panel.add(lblSearch);
 
-        String[] searchTypes = {"All Fields", "Title", "Author", "ID (Book/Author)"};
+        String[] searchTypes = {"All Fields", "Title", "Author", "Book Code", "Author Code"};
         JComboBox<String> cbSearchType = new JComboBox<>(searchTypes);
         cbSearchType.setBounds(480, 10, 140, 35);
         panel.add(cbSearchType);
@@ -116,7 +115,6 @@ public class MainDashBoard {
 
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
-
         table.getColumnModel().getColumn(2).setPreferredWidth(350);
 
         JScrollPane scrollPane = new JScrollPane(table);
@@ -142,8 +140,6 @@ public class MainDashBoard {
 
         cbFilter.addActionListener(e -> btnSearchAll.doClick());
         cbSearchType.addActionListener(e -> btnSearchAll.doClick());
-
-        // Trigger search automatically when the Enter key is pressed in the text field
         txtSearchBook.addActionListener(e -> btnSearchAll.doClick());
 
         btnLoadBooksTab1.addActionListener(e -> {
@@ -190,6 +186,18 @@ public class MainDashBoard {
             JTextField txtNewAuthorName = new JTextField();
             JTextField txtNewAuthorYear = new JTextField();
             JTextField txtQuantity = new JTextField();
+
+            // UX Enhancement: Disable text fields if an existing author is selected
+            cbAuthor.addActionListener(event -> {
+                boolean isNewAuthor = cbAuthor.getSelectedIndex() == 0;
+                txtNewAuthorName.setEnabled(isNewAuthor);
+                txtNewAuthorYear.setEnabled(isNewAuthor);
+
+                if (!isNewAuthor) {
+                    txtNewAuthorName.setText("");
+                    txtNewAuthorYear.setText("");
+                }
+            });
 
             List<Category> dbCategoriesAdd = bookTool.getAllCategories();
             String[] categoryOptions = new String[dbCategoriesAdd.size()];
@@ -277,10 +285,13 @@ public class MainDashBoard {
 
         btnTimeTravel.addActionListener(e -> {
             try {
-                int days = Integer.parseInt(JOptionPane.showInputDialog("Days to skip:"));
-                SystemClock.addDays(days);
-                lblDate.setText("System Date: " + SystemClock.now());
-                btnLoad.doClick();
+                String res = JOptionPane.showInputDialog("Days to skip:");
+                if (res != null) {
+                    int days = Integer.parseInt(res);
+                    SystemClock.addDays(days);
+                    lblDate.setText("System Date: " + SystemClock.now());
+                    btnLoad.doClick();
+                }
             } catch (Exception ex) {}
         });
 
@@ -291,7 +302,7 @@ public class MainDashBoard {
         });
 
         btnLoad.addActionListener(e -> {
-            displayArea.setText("===BORROWED BOOKS & FINES LIST===\n\n" + transactionTool.getBorrowerListForUI());
+            displayArea.setText("=== BORROWED BOOKS & FINES LIST ===\n\n" + transactionTool.getBorrowerListForUI());
         });
 
         btnBorrow.addActionListener(e -> {
@@ -306,8 +317,6 @@ public class MainDashBoard {
 
         return panel;
     }
-
-    // USER MANAGEMENT TAB (BORROWERS)
 
     private JPanel createBorrowerPanel() {
         JPanel panel = new JPanel(null);
@@ -388,13 +397,11 @@ public class MainDashBoard {
                         continue;
                     }
 
-                    // BLOCK IF PHONE NUMBER IS INVALID
                     if (!borrowerTool.isValidPhoneNumber(phone)) {
                         JOptionPane.showMessageDialog(panel, "Invalid Phone Number!\nMust contain exactly 7 or 8 digits (No letters/symbols).", "Validation Error", JOptionPane.ERROR_MESSAGE);
                         continue;
                     }
 
-                    // BLOCK IF EMAIL IS NOT @GMAIL.COM
                     if (!borrowerTool.isValidEmail(email)) {
                         JOptionPane.showMessageDialog(panel, "Invalid Email!\nThe email must end with '@gmail.com' (e.g., john@gmail.com).", "Validation Error", JOptionPane.ERROR_MESSAGE);
                         continue;

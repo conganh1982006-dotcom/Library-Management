@@ -49,19 +49,13 @@ public class BookDAO {
         return list;
     }
 
-    // BASIC OMNI-SEARCH (Reused by BorrowPopup)
-
     public List<Book> searchOmni(String keyword) {
-        // Reuse the overloaded method below with default "All Fields" and no category filter
         return searchOmni(keyword, "All Fields", 0);
     }
-
-    // ADVANCED DYNAMIC SEARCH (Combines Keyword, Search Type & Category Filtering)
 
     public List<Book> searchOmni(String keyword, String searchType, long categoryId) {
         List<Book> list = new ArrayList<>();
 
-        // DYNAMIC SQL TECHNIQUE: Start with '1=1' to easily append subsequent AND conditions
         StringBuilder sql = new StringBuilder(
                 "SELECT b.*, a.name AS author_name, c.name AS category_name " +
                         "FROM books b " +
@@ -70,50 +64,71 @@ public class BookDAO {
                         "WHERE 1=1 "
         );
 
-        // 1. Append Category filter condition if applicable
         if (categoryId > 0) {
             sql.append(" AND b.category_id = ? ");
         }
 
-        // 2. Append Keyword Search condition based on the selected Search Type dropdown
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+
         if (hasKeyword) {
             sql.append(" AND (");
             if ("Title".equals(searchType)) {
                 sql.append("b.title LIKE ?");
             } else if ("Author".equals(searchType)) {
                 sql.append("a.name LIKE ?");
-            } else if ("ID (Book/Author)".equals(searchType)) {
-                sql.append("b.book_code LIKE ? OR a.author_code LIKE ?");
-            } else { // Fallback to "All Fields"
+            } else if ("Book Code".equals(searchType)) {
+                sql.append("b.book_code LIKE ?");
+            } else if ("Author Code".equals(searchType)) {
+                sql.append("a.author_code LIKE ?");
+            } else {
                 sql.append("b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?");
             }
             sql.append(") ");
+
+            sql.append("ORDER BY ");
+            if ("Title".equals(searchType)) {
+                sql.append("(b.title LIKE ?) DESC");
+            } else if ("Author".equals(searchType)) {
+                sql.append("(a.name LIKE ?) DESC");
+            } else if ("Book Code".equals(searchType)) {
+                sql.append("(b.book_code LIKE ?) DESC");
+            } else if ("Author Code".equals(searchType)) {
+                sql.append("(a.author_code LIKE ?) DESC");
+            } else {
+                sql.append("(b.title LIKE ?) DESC, (b.book_code LIKE ?) DESC, (a.name LIKE ?) DESC");
+            }
         }
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-            int paramIndex = 1; // Parameter index counter for dynamic binding
+            int paramIndex = 1;
 
-            // Bind Category ID parameter
             if (categoryId > 0) {
                 ps.setLong(paramIndex++, categoryId);
             }
 
-            // Bind Keyword parameter(s) dynamically
             if (hasKeyword) {
-                String searchPattern = "%" + keyword + "%";
+                String containsPat = "%" + keyword + "%";
+                String startsWithPat = keyword + "%";
+
                 if ("Title".equals(searchType) || "Author".equals(searchType)) {
-                    ps.setString(paramIndex++, searchPattern);
-                } else if ("ID (Book/Author)".equals(searchType)) {
-                    ps.setString(paramIndex++, searchPattern);
-                    ps.setString(paramIndex++, searchPattern);
-                } else { // "All Fields" requires 4 parameter bindings
-                    ps.setString(paramIndex++, searchPattern);
-                    ps.setString(paramIndex++, searchPattern);
-                    ps.setString(paramIndex++, searchPattern);
-                    ps.setString(paramIndex++, searchPattern);
+                    ps.setString(paramIndex++, containsPat);
+                } else if ("Book Code".equals(searchType) || "Author Code".equals(searchType)) {
+                    ps.setString(paramIndex++, startsWithPat);
+                } else {
+                    ps.setString(paramIndex++, containsPat);
+                    ps.setString(paramIndex++, containsPat);
+                    ps.setString(paramIndex++, containsPat);
+                    ps.setString(paramIndex++, containsPat);
+                }
+
+                if ("Title".equals(searchType) || "Author".equals(searchType) || "Book Code".equals(searchType) || "Author Code".equals(searchType)) {
+                    ps.setString(paramIndex++, startsWithPat);
+                } else {
+                    ps.setString(paramIndex++, startsWithPat);
+                    ps.setString(paramIndex++, startsWithPat);
+                    ps.setString(paramIndex++, startsWithPat);
                 }
             }
 
@@ -137,41 +152,32 @@ public class BookDAO {
         return list;
     }
 
-    // AUTHOR CODE GENERATION ALGORITHM (STANDARDIZED 3-CHARACTER PREFIX)
-
     private String generateAuthorCode(String name, int birthYear) {
-        // Split the author's name into individual words based on whitespace
         String[] words = name.trim().split("\\s+");
         StringBuilder prefix = new StringBuilder();
 
         if (words.length >= 3) {
-            // SCENARIO 1: Long names (>= 3 words) -> Extract initials from the last 3 words
             prefix.append(words[words.length - 3].substring(0, 1));
             prefix.append(words[words.length - 2].substring(0, 1));
             prefix.append(words[words.length - 1].substring(0, 1));
         } else if (words.length == 2) {
-            // SCENARIO 2: 2-word names -> Extract 2 initials and pad with "0"
             prefix.append(words[0].substring(0, 1));
             prefix.append(words[1].substring(0, 1));
             prefix.append("0");
         } else if (words.length == 1 && !words[0].isEmpty()) {
-            // SCENARIO 3: Single-word names -> Extract 1 initial and pad with "00"
             prefix.append(words[0].substring(0, 1));
             prefix.append("00");
         } else {
-            // Fallback for edge cases (Although prevented by UI validation)
             prefix.append("UNK");
         }
-
-        // Convert prefix to UPPERCASE and append the birth year
         return prefix.toString().toUpperCase() + birthYear;
     }
 
-    // Retrieve existing author ID or create a new author based on the generated code
+    // BUG FIX: Bulletproof method to get Author ID safely
     private long getOrCreateAuthorId(Connection conn, String authorName, int birthYear) throws SQLException {
         String authorCode = generateAuthorCode(authorName, birthYear);
 
-        // 1. Search utilizing the unique Author Code rather than the name
+        // 1. Check if the author already exists
         String checkSql = "SELECT author_id FROM authors WHERE author_code = ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
             checkStmt.setString(1, authorCode);
@@ -179,24 +185,40 @@ public class BookDAO {
             if (rs.next()) return rs.getLong("author_id");
         }
 
-        // 2. If no match is found, insert a new author record with Code, Name, and Birth Year
+        // 2. Insert new author (Removed getGeneratedKeys to avoid JDBC bugs with non-AutoIncrement tables)
         String insertSql = "INSERT INTO authors (author_code, name, birth_year) VALUES (?, ?, ?)";
-        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
             insertStmt.setString(1, authorCode);
             insertStmt.setString(2, authorName);
             insertStmt.setInt(3, birthYear);
             insertStmt.executeUpdate();
-            ResultSet keys = insertStmt.getGeneratedKeys();
-            if (keys.next()) return keys.getLong(1);
         }
-        throw new SQLException("Cannot create author!");
+
+        // 3. Fetch the ID explicitly using the unique author_code we just inserted
+        try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            checkStmt.setString(1, authorCode);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next()) return rs.getLong("author_id");
+        }
+
+        throw new SQLException("Cannot retrieve new author ID!");
     }
 
+    // BUG FIX: Count by Prefix string to prevent jumping numbers
     private String generateBookCode(Connection conn, long categoryId, String categoryName) throws SQLException {
-        String prefix = categoryName.substring(0, 1).toUpperCase();
-        String countSql = "SELECT COUNT(*) FROM books WHERE category_id = ?";
+        String prefix;
+        String cleanName = categoryName.trim().replaceAll("\\s+", "");
+
+        if (cleanName.length() >= 3) {
+            prefix = cleanName.substring(0, 3).toUpperCase();
+        } else {
+            prefix = String.format("%-3s", cleanName).replace(' ', 'X').toUpperCase();
+        }
+
+        // Count how many books already have this exact prefix
+        String countSql = "SELECT COUNT(*) FROM books WHERE book_code LIKE ?";
         try (PreparedStatement ps = conn.prepareStatement(countSql)) {
-            ps.setLong(1, categoryId);
+            ps.setString(1, prefix + "%");
             ResultSet rs = ps.executeQuery();
             int currentCount = 0;
             if (rs.next()) currentCount = rs.getInt(1);
@@ -204,12 +226,10 @@ public class BookDAO {
         }
     }
 
-    // UPDATED TO ACCEPT BIRTH YEAR FOR ADVANCED AUTHOR VALIDATION
     public boolean addBookSmart(String title, String authorName, int birthYear, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                // Retrieve or auto-generate author ID
                 long authorId = getOrCreateAuthorId(conn, authorName, birthYear);
                 String bookCode = generateBookCode(conn, categoryId, categoryName);
 
@@ -245,6 +265,7 @@ public class BookDAO {
             checkPs.setLong(1, bookId);
             ResultSet rs = checkPs.executeQuery();
             if (rs.next() && rs.getInt(1) > 0) return false;
+
             deletePs.setLong(1, bookId);
             return deletePs.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -267,7 +288,6 @@ public class BookDAO {
         }
     }
 
-    // RETRIEVE AUTHOR LIST FOR UI COMBOBOX POPULATION
     public List<String> getAllAuthorsForUI() {
         List<String> list = new ArrayList<>();
         String sql = "SELECT author_id, name, birth_year FROM authors";
@@ -275,14 +295,12 @@ public class BookDAO {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                // Format output as: "1 - Stephen Hawking (1942)"
                 list.add(rs.getLong("author_id") + " - " + rs.getString("name") + " (" + rs.getInt("birth_year") + ")");
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
-    // ADD BOOK USING AN EXISTING AUTHOR ID (Bypasses author creation)
     public boolean addBookWithExistingAuthor(String title, long authorId, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);

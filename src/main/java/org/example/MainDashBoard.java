@@ -3,6 +3,7 @@ package org.example;
 import org.example.Data_access_object.BookDAO;
 import org.example.Data_access_object.TransactionDAO;
 import org.example.Data_access_object.BorrowerDAO;
+import org.example.Data_access_object.DamagedBookDAO;
 import org.example.models.Book;
 import org.example.models.Category;
 
@@ -14,6 +15,7 @@ public class MainDashBoard {
     private final BookDAO bookTool = new BookDAO();
     private final TransactionDAO transactionTool = new TransactionDAO();
     private final BorrowerDAO borrowerTool = new BorrowerDAO();
+    private final DamagedBookDAO damagedTool = new DamagedBookDAO(); // Added DamagedBookDAO
     private JButton btnLoadBooksTab1;
 
     private String userRole;
@@ -32,6 +34,7 @@ public class MainDashBoard {
         tabbedPane.addTab("  Book Inventory  ", createBookPanel());
         tabbedPane.addTab("  Borrow & Return  ", createTransactionPanel());
         tabbedPane.addTab("  User Management  ", createBorrowerPanel());
+        tabbedPane.addTab("  Damaged Books  ", createDamagedPanel()); // Added 4th Tab
 
         frame.add(tabbedPane);
         frame.setVisible(true);
@@ -86,7 +89,6 @@ public class MainDashBoard {
         btnAdd.setBounds(20, 55, 150, 35);
         panel.add(btnAdd);
 
-        // Updated button from "Update Qty" to "Edit Book"
         JButton btnEditBook = new JButton("Edit Book");
         btnEditBook.setBounds(180, 55, 170, 35);
         panel.add(btnEditBook);
@@ -95,7 +97,7 @@ public class MainDashBoard {
         btnDelete.setBounds(360, 55, 130, 35);
         panel.add(btnDelete);
 
-        // Role-based UI protection
+        // Role based UI protection for staff
         if ("STAFF".equalsIgnoreCase(userRole)) {
             btnAdd.setEnabled(false);
             btnEditBook.setEnabled(false);
@@ -123,7 +125,7 @@ public class MainDashBoard {
         scrollPane.setBounds(20, 100, 1140, 560);
         panel.add(scrollPane);
 
-        // Search trigger
+        // Execute search query
         btnSearchAll.addActionListener(e -> {
             String keyword = txtSearchBook.getText().trim();
             String searchType = (String) cbSearchType.getSelectedItem();
@@ -152,7 +154,7 @@ public class MainDashBoard {
             btnSearchAll.doClick();
         });
 
-        // Upgraded logic to edit both Title and Quantity
+        // Edit book title and quantity functionality
         btnEditBook.addActionListener(e -> {
             int selectedRow = table.getSelectedRow();
             if (selectedRow == -1) {
@@ -164,7 +166,6 @@ public class MainDashBoard {
             String currentTitle = (String) table.getValueAt(selectedRow, 2);
             int currentAvailableQty = ((Number) table.getValueAt(selectedRow, 6)).intValue();
 
-            // Pre-fill fields with existing data
             JTextField txtEditTitle = new JTextField(currentTitle);
             JTextField txtQtyChange = new JTextField("0");
 
@@ -185,13 +186,11 @@ public class MainDashBoard {
 
                     int amountChange = Integer.parseInt(txtQtyChange.getText().trim());
 
-                    // Validation: Prevent reducing quantity below 0 available
                     if (amountChange < 0 && Math.abs(amountChange) > currentAvailableQty) {
                         JOptionPane.showMessageDialog(panel, "Invalid Quantity! You cannot reduce more than available.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                     }
 
-                    // Execute update via DAO
                     if (bookTool.updateBookInfo(bookId, newTitle, amountChange)) {
                         btnLoadBooksTab1.doClick();
                         JOptionPane.showMessageDialog(panel, "Book updated successfully!");
@@ -212,7 +211,7 @@ public class MainDashBoard {
             JTextField txtNewAuthorYear = new JTextField();
             JTextField txtQuantity = new JTextField();
 
-            // UX Enhancement: Disable text fields if an existing author is selected
+            // Disable author text fields if an existing author is selected from the combobox
             cbAuthor.addActionListener(event -> {
                 boolean isNewAuthor = cbAuthor.getSelectedIndex() == 0;
                 txtNewAuthorName.setEnabled(isNewAuthor);
@@ -237,7 +236,7 @@ public class MainDashBoard {
                     try {
                         String title = txtTitle.getText().trim();
                         int qty = Integer.parseInt(txtQuantity.getText().trim());
-                        if (qty <= 0) { JOptionPane.showMessageDialog(panel, "Quantity > 0!"); continue; }
+                        if (qty <= 0) { JOptionPane.showMessageDialog(panel, "Quantity must be greater than 0!"); continue; }
 
                         long catId = dbCategoriesAdd.get(cbCategoryAdd.getSelectedIndex()).getCategoryId();
                         String catName = dbCategoriesAdd.get(cbCategoryAdd.getSelectedIndex()).getName();
@@ -252,7 +251,7 @@ public class MainDashBoard {
                         }
                         btnLoadBooksTab1.doClick();
                         break;
-                    } catch (Exception ex) { JOptionPane.showMessageDialog(panel, "Invalid input!"); }
+                    } catch (Exception ex) { JOptionPane.showMessageDialog(panel, "Invalid input format!"); }
                 } else break;
             }
         });
@@ -261,9 +260,9 @@ public class MainDashBoard {
             int selectedRow = table.getSelectedRow();
             if (selectedRow == -1) return;
             long bookId = ((Number) table.getValueAt(selectedRow, 0)).longValue();
-            if (JOptionPane.showConfirmDialog(panel, "Delete?", "Confirm", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            if (JOptionPane.showConfirmDialog(panel, "Confirm deletion?", "Confirm", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                 if (bookTool.deleteBook(bookId)) btnLoadBooksTab1.doClick();
-                else JOptionPane.showMessageDialog(panel, "Cannot delete borrowed book!");
+                else JOptionPane.showMessageDialog(panel, "Cannot delete a book that is currently borrowed!");
             }
         });
 
@@ -367,8 +366,12 @@ public class MainDashBoard {
         btnAdd.setBounds(20, 55, 130, 35);
         panel.add(btnAdd);
 
+        JButton btnEditUser = new JButton("Edit User");
+        btnEditUser.setBounds(160, 55, 130, 35);
+        panel.add(btnEditUser);
+
         JButton btnDelete = new JButton("Delete User");
-        btnDelete.setBounds(160, 55, 130, 35);
+        btnDelete.setBounds(300, 55, 130, 35);
         panel.add(btnDelete);
 
         String[] cols = {"DB_ID", "User ID (Code)", "Full Name", "Email Address", "Phone Number"};
@@ -403,10 +406,21 @@ public class MainDashBoard {
         btnSearch.addActionListener(e -> loadData.run());
         txtSearch.addActionListener(e -> loadData.run());
 
+        // Add User functionality with strict input mode
         btnAdd.addActionListener(e -> {
             JTextField txtName = new JTextField();
             JTextField txtEmail = new JTextField();
             JTextField txtPhone = new JTextField();
+
+            // Strict mode: Prevent typing any characters other than numbers
+            ((javax.swing.text.AbstractDocument) txtPhone.getDocument()).setDocumentFilter(new javax.swing.text.DocumentFilter() {
+                @Override
+                public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attrs) throws javax.swing.text.BadLocationException {
+                    if (text.matches("[0-9]*")) {
+                        super.replace(fb, offset, length, text, attrs);
+                    }
+                }
+            });
 
             Object[] form = { "Full Name:", txtName, "Email (@gmail.com):", txtEmail, "Phone Number (7-8 digits):", txtPhone };
 
@@ -418,17 +432,17 @@ public class MainDashBoard {
                     String phone = txtPhone.getText().trim();
 
                     if (name.isEmpty() || phone.isEmpty() || email.isEmpty()) {
-                        JOptionPane.showMessageDialog(panel, "All fields are required!");
+                        JOptionPane.showMessageDialog(panel, "All fields are required!", "Error", JOptionPane.ERROR_MESSAGE);
                         continue;
                     }
 
                     if (!borrowerTool.isValidPhoneNumber(phone)) {
-                        JOptionPane.showMessageDialog(panel, "Invalid Phone Number!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(panel, "Invalid Phone Number! Must contain exactly 7 or 8 digits.", "Validation Error", JOptionPane.ERROR_MESSAGE);
                         continue;
                     }
 
                     if (!borrowerTool.isValidEmail(email)) {
-                        JOptionPane.showMessageDialog(panel, "Invalid Email!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(panel, "Invalid Email! Must end with @gmail.com", "Validation Error", JOptionPane.ERROR_MESSAGE);
                         continue;
                     }
 
@@ -437,17 +451,86 @@ public class MainDashBoard {
                         loadData.run();
                         break;
                     } else {
-                        JOptionPane.showMessageDialog(panel, "Database error!");
+                        JOptionPane.showMessageDialog(panel, "Database error or duplicated code!", "Error", JOptionPane.ERROR_MESSAGE);
                         break;
                     }
                 } else break;
             }
         });
 
+        // Edit User functionality with strict input mode
+        btnEditUser.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(panel, "Please select a user to edit first!");
+                return;
+            }
+
+            long id = ((Number) table.getValueAt(row, 0)).longValue();
+            String currentName = (String) table.getValueAt(row, 2);
+            String currentEmail = (String) table.getValueAt(row, 3);
+            String currentPhone = (String) table.getValueAt(row, 4);
+
+            JTextField txtEditName = new JTextField(currentName);
+            JTextField txtEditEmail = new JTextField(currentEmail);
+            JTextField txtEditPhone = new JTextField(currentPhone);
+
+            // Strict mode: Prevent typing any characters other than numbers
+            ((javax.swing.text.AbstractDocument) txtEditPhone.getDocument()).setDocumentFilter(new javax.swing.text.DocumentFilter() {
+                @Override
+                public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attrs) throws javax.swing.text.BadLocationException {
+                    if (text.matches("[0-9]*")) {
+                        super.replace(fb, offset, length, text, attrs);
+                    }
+                }
+            });
+
+            Object[] form = {
+                    "Full Name:", txtEditName,
+                    "Email (@gmail.com):", txtEditEmail,
+                    "Phone Number (7-8 digits):", txtEditPhone
+            };
+
+            while (true) {
+                int opt = JOptionPane.showConfirmDialog(panel, form, "Edit Borrower Information", JOptionPane.OK_CANCEL_OPTION);
+                if (opt == JOptionPane.OK_OPTION) {
+                    String newName = txtEditName.getText().trim();
+                    String newEmail = txtEditEmail.getText().trim();
+                    String newPhone = txtEditPhone.getText().trim();
+
+                    if (newName.isEmpty() || newPhone.isEmpty() || newEmail.isEmpty()) {
+                        JOptionPane.showMessageDialog(panel, "All fields are required!", "Error", JOptionPane.ERROR_MESSAGE);
+                        continue;
+                    }
+
+                    if (!borrowerTool.isValidPhoneNumber(newPhone)) {
+                        JOptionPane.showMessageDialog(panel, "Invalid Phone Number! Must be exactly 7 or 8 digits.", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        continue;
+                    }
+
+                    if (!borrowerTool.isValidEmail(newEmail)) {
+                        JOptionPane.showMessageDialog(panel, "Invalid Email! Must end with @gmail.com", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                        continue;
+                    }
+
+                    if (borrowerTool.updateBorrowerInfo(id, newName, newEmail, newPhone)) {
+                        JOptionPane.showMessageDialog(panel, "User updated successfully!");
+                        loadData.run();
+                        break;
+                    } else {
+                        JOptionPane.showMessageDialog(panel, "Database error! Update failed.", "Error", JOptionPane.ERROR_MESSAGE);
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        });
+
         btnDelete.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(panel, "Select a user first!"); return;
+                JOptionPane.showMessageDialog(panel, "Please select a user first!"); return;
             }
             long id = ((Number) table.getValueAt(row, 0)).longValue();
             String name = (String) table.getValueAt(row, 2);
@@ -459,6 +542,144 @@ public class MainDashBoard {
                     loadData.run();
                 } else {
                     JOptionPane.showMessageDialog(panel, "Cannot delete! This user still has books to return.", "Delete Blocked", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        SwingUtilities.invokeLater(loadData);
+        return panel;
+    }
+
+    // NEW TAB: DAMAGED BOOKS
+    private JPanel createDamagedPanel() {
+        JPanel panel = new JPanel(null);
+
+        JLabel lblSearch = new JLabel("Search by Book Code/Title:");
+        lblSearch.setBounds(20, 15, 250, 30);
+        lblSearch.setFont(new Font("SansSerif", Font.BOLD, 14));
+        panel.add(lblSearch);
+
+        JTextField txtSearch = new JTextField();
+        txtSearch.setBounds(250, 15, 300, 35);
+        panel.add(txtSearch);
+
+        JButton btnSearch = new JButton("Search");
+        btnSearch.setBounds(570, 15, 100, 35);
+        panel.add(btnSearch);
+
+        JButton btnLoad = new JButton("Refresh List");
+        btnLoad.setBounds(680, 15, 120, 35);
+        panel.add(btnLoad);
+
+        JButton btnAddIssue = new JButton("Report Damage");
+        btnAddIssue.setBounds(20, 60, 150, 35);
+        panel.add(btnAddIssue);
+
+        JButton btnMarkRepaired = new JButton("Mark as Repaired");
+        btnMarkRepaired.setBounds(180, 60, 160, 35);
+        panel.add(btnMarkRepaired);
+
+        // Clear repaired history button
+        JButton btnClearHistory = new JButton("Clear Repaired History");
+        btnClearHistory.setBounds(350, 60, 200, 35);
+        btnClearHistory.setForeground(Color.RED);
+        panel.add(btnClearHistory);
+
+        String[] cols = {"Issue ID", "Book ID", "Book Code", "Book Title", "Damage Type", "Notes", "Status"};
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable table = new JTable(model);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setRowHeight(30);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 14));
+
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(1).setMinWidth(0);
+        table.getColumnModel().getColumn(1).setMaxWidth(0);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBounds(20, 110, 1140, 550);
+        panel.add(scrollPane);
+
+        Runnable loadData = () -> {
+            model.setRowCount(0);
+            List<Object[]> issues = damagedTool.getAllDamagedBooks(txtSearch.getText().trim());
+            for (Object[] row : issues) model.addRow(row);
+        };
+
+        btnLoad.addActionListener(e -> { txtSearch.setText(""); loadData.run(); });
+        btnSearch.addActionListener(e -> loadData.run());
+        txtSearch.addActionListener(e -> loadData.run());
+
+        btnAddIssue.addActionListener(e -> {
+            JTextField txtBookCode = new JTextField();
+            String[] damageTypes = {"Torn Pages", "Water Damage", "Lost/Missing", "Other"};
+            JComboBox<String> cbDamageType = new JComboBox<>(damageTypes);
+            JTextArea txtNotes = new JTextArea(3, 20);
+            txtNotes.setLineWrap(true);
+
+            Object[] form = {
+                    "Enter EXACT Book Code (e.g. THE0001):", txtBookCode,
+                    "Select Damage Type:", cbDamageType,
+                    "Additional Notes:", new JScrollPane(txtNotes)
+            };
+
+            if (JOptionPane.showConfirmDialog(panel, form, "Report a Damaged Book", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+                String code = txtBookCode.getText().trim();
+                String type = (String) cbDamageType.getSelectedItem();
+                String notes = txtNotes.getText().trim();
+
+                if(code.isEmpty()) {
+                    JOptionPane.showMessageDialog(panel, "Book Code is required!", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (damagedTool.reportDamage(code, type, notes)) {
+                    JOptionPane.showMessageDialog(panel, "Damage reported! Book moved out of available inventory.");
+                    loadData.run();
+                    btnLoadBooksTab1.doClick();
+                } else {
+                    JOptionPane.showMessageDialog(panel, "Failed! Book Code not found or Available Quantity is 0.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        btnMarkRepaired.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(panel, "Please select an issue to mark as repaired!"); return;
+            }
+
+            String status = (String) table.getValueAt(row, 6);
+            if ("REPAIRED".equals(status)) {
+                JOptionPane.showMessageDialog(panel, "This book is already marked as repaired!"); return;
+            }
+
+            int confirm = JOptionPane.showConfirmDialog(panel, "Is this book fully repaired and ready to be borrowed again?", "Confirm Repair", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                int issueId = ((Number) table.getValueAt(row, 0)).intValue();
+                long bookId = ((Number) table.getValueAt(row, 1)).longValue();
+
+                if (damagedTool.markAsRepaired(issueId, bookId)) {
+                    JOptionPane.showMessageDialog(panel, "Book repaired! Added back to available inventory.");
+                    loadData.run();
+                    btnLoadBooksTab1.doClick();
+                } else {
+                    JOptionPane.showMessageDialog(panel, "Error updating database!", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        // Delete repaired records from history button functionality
+        btnClearHistory.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(panel, "Are you sure you want to delete all 'REPAIRED' records from history?", "Clear History", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (damagedTool.deleteRepairedIssues()) {
+                    JOptionPane.showMessageDialog(panel, "Repaired history cleared successfully!");
+                    loadData.run();
                 }
             }
         });

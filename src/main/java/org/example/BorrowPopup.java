@@ -4,7 +4,6 @@ import org.example.Data_access_object.BookDAO;
 import org.example.Data_access_object.BorrowerDAO;
 import org.example.Data_access_object.TransactionDAO;
 import org.example.models.Book;
-import org.example.models.Borrower; // Keep this import if Borrower objects are used elsewhere, though not directly in addBorrower anymore
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -22,9 +21,9 @@ public class BorrowPopup extends JDialog {
         setLayout(null);
         setLocationRelativeTo(parentFrame);
 
-        // PART 1: SELECT / ADD BORROWER
+        // PART 1: SELECT BORROWER
 
-        JLabel lblUser = new JLabel("BORROWER (Search by Name or Add New):");
+        JLabel lblUser = new JLabel("BORROWER (Search by Name):");
         lblUser.setBounds(20, 10, 400, 25);
         add(lblUser);
 
@@ -35,10 +34,6 @@ public class BorrowPopup extends JDialog {
         JButton btnSearchUser = new JButton("Search User");
         btnSearchUser.setBounds(230, 40, 150, 30);
         add(btnSearchUser);
-
-        JButton btnAddUser = new JButton("Add New User");
-        btnAddUser.setBounds(390, 40, 150, 30);
-        add(btnAddUser);
 
         // UPDATED: Added DB_ID (Hidden) and User Code
         String[] userCols = {"DB_ID", "User Code", "Name", "Phone", "Currently Borrowing"};
@@ -68,39 +63,6 @@ public class BorrowPopup extends JDialog {
             }
         });
 
-        btnAddUser.addActionListener(e -> {
-            JTextField txtName = new JTextField();
-            JTextField txtPhone = new JTextField();
-            JTextField txtEmail = new JTextField();
-
-            Object[] formFields = {
-                    "Full Name (*):", txtName,
-                    "Phone Number:", txtPhone,
-                    "Email:", txtEmail
-            };
-
-            int option = JOptionPane.showConfirmDialog(this, formFields, "Register New User", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
-            if (option == JOptionPane.OK_OPTION) {
-                String newName = txtName.getText().trim();
-                String newPhone = txtPhone.getText().trim();
-                String newEmail = txtEmail.getText().trim();
-
-                if (newName.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Name cannot be empty!");
-                } else {
-                    // Call the updated addBorrower method
-                    if (borrowerDAO.addBorrower(newName, newEmail, newPhone)) {
-                        JOptionPane.showMessageDialog(this, "User registered successfully for: " + newName);
-                        txtSearchUser.setText(newName);
-                        btnSearchUser.doClick();
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Error registering user. Please check logs.", "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            }
-        });
-
         // PART 2: SELECT BOOK
 
         JLabel lblBook = new JLabel("BOOK INVENTORY (Search by Title or Load All):");
@@ -119,7 +81,7 @@ public class BorrowPopup extends JDialog {
         btnLoadBooks.setBounds(390, 280, 150, 30);
         add(btnLoadBooks);
 
-        // UPDATED: Added DB_ID (Hidden) and Book Code
+        //  Added DB_ID (Hidden) and Book Code
         String[] bookCols = {"DB_ID", "Book Code", "Title", "Available Qty"};
         DefaultTableModel bookModel = new DefaultTableModel(bookCols, 0) {
             @Override

@@ -146,4 +146,19 @@ public class BorrowerDAO {
         }
         return list;
     }
+    // Upgraded: Updates Borrower Information (Name, Email, Phone)
+    public boolean updateBorrowerInfo(long borrowerId, String newName, String newEmail, String newPhone) {
+        String sql = "UPDATE borrowers SET name = ?, email = ?, phone_number = ? WHERE borrower_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newName);
+            ps.setString(2, newEmail);
+            ps.setString(3, newPhone);
+            ps.setLong(4, borrowerId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -9,6 +9,10 @@ import java.util.List;
 
 public class BookDAO {
 
+    /**
+     * Retrieves all categories from the database.
+     * @return A list of Category objects.
+     */
     public List<Category> getAllCategories() {
         List<Category> list = new ArrayList<>();
         String sql = "SELECT * FROM categories";
@@ -22,6 +26,10 @@ public class BookDAO {
         return list;
     }
 
+    /**
+     * Retrieves all books from the database, including author and category names.
+     * @return A list of Book objects.
+     */
     public List<Book> getAllBooks() {
         List<Book> list = new ArrayList<>();
         String sql = "SELECT b.*, a.name AS author_name, c.name AS category_name " +
@@ -49,13 +57,26 @@ public class BookDAO {
         return list;
     }
 
+    /**
+     * Performs a basic omni-search for books without category filtering.
+     * @param keyword The search keyword.
+     * @return A list of Book objects matching the keyword.
+     */
     public List<Book> searchOmni(String keyword) {
         return searchOmni(keyword, "All Fields", 0);
     }
 
+    /**
+     * Performs an advanced dynamic search for books with keyword, search type, and category filtering.
+     * @param keyword The search keyword.
+     * @param searchType The type of search (e.g., "Title", "Author", "Book Code", "Author Code", "All Fields").
+     * @param categoryId The category ID to filter by (0 for no filter).
+     * @return A list of Book objects matching the criteria.
+     */
     public List<Book> searchOmni(String keyword, String searchType, long categoryId) {
         List<Book> list = new ArrayList<>();
 
+        // DYNAMIC SQL TECHNIQUE: Start with '1=1' to easily append subsequent AND conditions
         StringBuilder sql = new StringBuilder(
                 "SELECT b.*, a.name AS author_name, c.name AS category_name " +
                         "FROM books b " +
@@ -64,27 +85,31 @@ public class BookDAO {
                         "WHERE 1=1 "
         );
 
+        // Append Category filter condition if applicable
         if (categoryId > 0) {
             sql.append(" AND b.category_id = ? ");
         }
 
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
 
+        // Append Keyword Search condition based on the selected Search Type dropdown
         if (hasKeyword) {
             sql.append(" AND (");
+            // Synchronized: Separate Book Code and Author Code to match MainDashBoard
             if ("Title".equals(searchType)) {
                 sql.append("b.title LIKE ?");
             } else if ("Author".equals(searchType)) {
                 sql.append("a.name LIKE ?");
             } else if ("Book Code".equals(searchType)) {
-                sql.append("b.book_code LIKE ?");
+                sql.append("b.book_code LIKE ?"); // Search only book code
             } else if ("Author Code".equals(searchType)) {
-                sql.append("a.author_code LIKE ?");
-            } else {
+                sql.append("a.author_code LIKE ?"); // Search only author code
+            } else { // Fallback to "All Fields"
                 sql.append("b.title LIKE ? OR a.name LIKE ? OR b.book_code LIKE ? OR a.author_code LIKE ?");
             }
             sql.append(") ");
 
+            // PRIORITY RANKING: Push exact prefix matches ('keyword%') to the top of the result list
             sql.append("ORDER BY ");
             if ("Title".equals(searchType)) {
                 sql.append("(b.title LIKE ?) DESC");
@@ -94,7 +119,7 @@ public class BookDAO {
                 sql.append("(b.book_code LIKE ?) DESC");
             } else if ("Author Code".equals(searchType)) {
                 sql.append("(a.author_code LIKE ?) DESC");
-            } else {
+            } else { // Priority for "All Fields"
                 sql.append("(b.title LIKE ?) DESC, (b.book_code LIKE ?) DESC, (a.name LIKE ?) DESC");
             }
         }
@@ -102,30 +127,35 @@ public class BookDAO {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-            int paramIndex = 1;
+            int paramIndex = 1; // Parameter index counter for dynamic binding
 
+            // Bind Category ID parameter
             if (categoryId > 0) {
                 ps.setLong(paramIndex++, categoryId);
             }
 
+            // Bind Keyword parameter(s) dynamically
             if (hasKeyword) {
-                String containsPat = "%" + keyword + "%";
-                String startsWithPat = keyword + "%";
+                String containsPat = "%" + keyword + "%"; // Used for WHERE (Search everywhere)
+                String startsWithPat = keyword + "%";     // Used for ORDER BY & Code Search (Prioritize prefix)
 
+                // A. Bind parameters for the WHERE clause
                 if ("Title".equals(searchType) || "Author".equals(searchType)) {
-                    ps.setString(paramIndex++, containsPat);
+                    ps.setString(paramIndex++, containsPat); // Search contains
                 } else if ("Book Code".equals(searchType) || "Author Code".equals(searchType)) {
+                    // FIX: Code search should match from the beginning to avoid data noise
                     ps.setString(paramIndex++, startsWithPat);
-                } else {
+                } else { // "All Fields" requires 4 parameter bindings
                     ps.setString(paramIndex++, containsPat);
                     ps.setString(paramIndex++, containsPat);
                     ps.setString(paramIndex++, containsPat);
                     ps.setString(paramIndex++, containsPat);
                 }
 
+                // B. Bind parameters for the ORDER BY clause
                 if ("Title".equals(searchType) || "Author".equals(searchType) || "Book Code".equals(searchType) || "Author Code".equals(searchType)) {
                     ps.setString(paramIndex++, startsWithPat);
-                } else {
+                } else { // "All Fields" requires 3 parameter bindings for Order By
                     ps.setString(paramIndex++, startsWithPat);
                     ps.setString(paramIndex++, startsWithPat);
                     ps.setString(paramIndex++, startsWithPat);
@@ -152,6 +182,12 @@ public class BookDAO {
         return list;
     }
 
+    /**
+     * Generates a standardized 3-character prefix for author codes.
+     * @param name The author's full name.
+     * @param birthYear The author's birth year.
+     * @return The generated author code.
+     */
     private String generateAuthorCode(String name, int birthYear) {
         String[] words = name.trim().split("\\s+");
         StringBuilder prefix = new StringBuilder();
@@ -173,7 +209,14 @@ public class BookDAO {
         return prefix.toString().toUpperCase() + birthYear;
     }
 
-    // BUG FIX: Bulletproof method to get Author ID safely
+    /**
+     * Retrieves an existing author's ID or creates a new author if not found.
+     * @param conn The database connection.
+     * @param authorName The author's name.
+     * @param birthYear The author's birth year.
+     * @return The ID of the existing or newly created author.
+     * @throws SQLException If a database error occurs.
+     */
     private long getOrCreateAuthorId(Connection conn, String authorName, int birthYear) throws SQLException {
         String authorCode = generateAuthorCode(authorName, birthYear);
 
@@ -204,14 +247,23 @@ public class BookDAO {
         throw new SQLException("Cannot retrieve new author ID!");
     }
 
-    // BUG FIX: Count by Prefix string to prevent jumping numbers
+    /**
+     * Generates a unique book code based on category and existing books.
+     * @param conn The database connection.
+     * @param categoryId The category ID of the book.
+     * @param categoryName The name of the category.
+     * @return The generated book code.
+     * @throws SQLException If a database error occurs.
+     */
     private String generateBookCode(Connection conn, long categoryId, String categoryName) throws SQLException {
         String prefix;
+        // Remove spaces to handle compound names (e.g., "Sci Fi" -> "SciFi")
         String cleanName = categoryName.trim().replaceAll("\\s+", "");
 
         if (cleanName.length() >= 3) {
             prefix = cleanName.substring(0, 3).toUpperCase();
         } else {
+            // If the category name is too short (less than 3 characters), pad with 'X'
             prefix = String.format("%-3s", cleanName).replace(' ', 'X').toUpperCase();
         }
 
@@ -226,9 +278,20 @@ public class BookDAO {
         }
     }
 
+    /**
+     * Adds a new book to the database, creating a new author if necessary.
+     * Uses a transaction for atomicity.
+     * @param title The book's title.
+     * @param authorName The author's name.
+     * @param birthYear The author's birth year.
+     * @param categoryId The category ID.
+     * @param categoryName The category name.
+     * @param quantity The total quantity of the book.
+     * @return True if the book was added successfully, false otherwise.
+     */
     public boolean addBookSmart(String title, String authorName, int birthYear, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
+            conn.setAutoCommit(false); // Enable manual transaction control
             try {
                 long authorId = getOrCreateAuthorId(conn, authorName, birthYear);
                 String bookCode = generateBookCode(conn, categoryId, categoryName);
@@ -243,10 +306,10 @@ public class BookDAO {
                     ps.setInt(6, quantity);
                     ps.executeUpdate();
                 }
-                conn.commit();
+                conn.commit(); // Finalize transaction
                 return true;
             } catch (SQLException e) {
-                conn.rollback();
+                conn.rollback(); // Prevent data corruption on failure
                 e.printStackTrace();
                 return false;
             }
@@ -256,6 +319,11 @@ public class BookDAO {
         }
     }
 
+    /**
+     * Deletes a book from the database. Deletion is blocked if the book is currently borrowed.
+     * @param bookId The ID of the book to delete.
+     * @return True if the book was deleted, false if it's currently borrowed or an error occurred.
+     */
     public boolean deleteBook(long bookId) {
         String checkSql = "SELECT COUNT(*) FROM transactions WHERE book_id = ? AND status = 'BORROWED'";
         String deleteSql = "DELETE FROM books WHERE book_id = ?";
@@ -274,7 +342,13 @@ public class BookDAO {
         }
     }
 
-    // Upgraded: Updates both Book Title and Quantity simultaneously
+    /**
+     * Updates a book's title and adjusts its total and available quantities.
+     * @param bookId The ID of the book to update.
+     * @param newTitle The new title for the book.
+     * @param amountChange The amount to change the total and available quantities by.
+     * @return True if the book was updated successfully, false otherwise.
+     */
     public boolean updateBookInfo(long bookId, String newTitle, int amountChange) {
         String sql = "UPDATE books SET title = ?, total_quantity = total_quantity + ?, available_quantity = available_quantity + ? WHERE book_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -290,6 +364,10 @@ public class BookDAO {
         }
     }
 
+    /**
+     * Retrieves a list of all authors for display in the UI.
+     * @return A list of strings, each representing an author with their ID, name, and birth year.
+     */
     public List<String> getAllAuthorsForUI() {
         List<String> list = new ArrayList<>();
         String sql = "SELECT author_id, name, birth_year FROM authors";
@@ -303,6 +381,16 @@ public class BookDAO {
         return list;
     }
 
+    /**
+     * Adds a new book to the database using an existing author.
+     * Uses a transaction for atomicity.
+     * @param title The book's title.
+     * @param authorId The ID of the existing author.
+     * @param categoryId The category ID.
+     * @param categoryName The category name.
+     * @param quantity The total quantity of the book.
+     * @return True if the book was added successfully, false otherwise.
+     */
     public boolean addBookWithExistingAuthor(String title, long authorId, long categoryId, String categoryName, int quantity) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
